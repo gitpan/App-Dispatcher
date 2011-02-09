@@ -1,0 +1,95 @@
+#!/usr/bin/perl
+use File::Basename;
+use lib dirname($0).'/../lib';
+
+use App::Dispatcher::Command::Dispatcher;
+App::Dispatcher::Command::Dispatcher->run;
+
+__END__
+
+
+=head1 NAME
+
+app-dispatcher - build command line applications in Perl
+
+=head1 SYNOPSIS
+
+  app-dispatcher [-v] [-n] [-f] [-i dirs] Your::Class
+
+=head1 DESCRIPTION
+
+B<app-dispatcher> is a tool for constructing command line applications
+written in Perl. It is specifically designed to handle applications
+with multiple sub-commands and will generate code to display usage
+text, option and argument validation, and command dispatching.
+
+What B<app-dispatcher> does is load 'lib/Your/Class.pm' and all modules
+found under 'lib/Your/Class/' and generates the file
+'lib/Your/Class/Dispatcher.pm'.  Your application script then becomes
+as simple as the following:
+
+    #!/usr/bin/perl
+    use Your::Class::Dispatcher;
+    Your::Class::Dispatcher->run;
+
+The only runtime dependency that 'Your::Class::Dispatcher' needs to run
+is L<Getopt::Long::Descriptive>(3p), which you should add to your
+Makefile.PL and/or Build.PL script.
+
+Note that B<app-dispatcher> is a code generation tool. This means your
+command's argument and option processing will not change when you
+modify your command classes, until you re-run B<app-dispatcher>.
+
+See L<App::Dispatcher::Tutorial>(3p) for details of how your command
+classes should be written.
+
+=head1 OPTIONS
+
+=over 4
+
+=item --help
+
+Print usage message and exit.
+
+=item --inc-dirs, -i
+
+A comma-separated list of directories to search in. Defaults to 'lib'.
+
+=item --verbose, -v
+
+Print the generated code to standard output during execution.
+
+=item --dry-run, -n
+
+Create and evaluate the dispatch class but don't actually write the
+file to disk.
+
+=item --force, -f
+
+Force the overwriting of writeable files. If this option is not set
+then B<app-dispatcher> will complain and exit if
+lib/Your/Class/Dispatcher.pm exists and is writeable.
+
+=back
+
+=head1 SEE ALSO
+
+L<App::Dispatcher>(3p),
+L<App::Dispatcher::Tutorial>(3p)
+
+=head1 AUTHOR
+
+Mark Lawrence E<lt>nomad@null.netE<gt>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright 2011 Mark Lawrence E<lt>nomad@null.netE<gt>
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+=cut
+
+# vim: set tabstop=4 expandtab:

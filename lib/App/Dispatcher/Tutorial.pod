@@ -1,0 +1,249 @@
+__END__
+=pod
+
+=head1 NAME
+
+App::Dispatcher::Tutorial - build fast command-line applications
+
+=head1 INTRODUCTION
+
+L<App::Dispatcher> is a tool for constructing command line applications
+written in Perl.  It is specifically designed to handle applications
+with multiple sub-commands and will generate code to display usage
+text, validate options and arguments, and dispatch commands. Its main
+strength is that the usage and validation does not load any of your
+work classes with their possibly heavy startup dependencies.
+
+An application built with App::Dispatcher is composed of three parts:
+
+=over 4
+
+=item Command Classes
+
+These classes are written by you to do the actual work. They have
+special methods which L<App::Dispatcher> uses to build the Dispatcher
+class.
+
+=item Dispatcher Class
+
+The Dispatcher class is generated when you run the L<app-dispatcher>(1)
+command. The dispatcher class is called by the Application Script at
+runtime.  After performing option and argument processing it calls the
+appropriate Command Class.
+
+The only runtime dependency that the Dispatcher Class needs to run
+is L<Getopt::Long::Descriptive>(3p), which you should add to your
+Makefile.PL and/or Build.PL scripts.
+
+Note that L<App::Dispatcher> is a code generation tool. This means
+that option and argument processing will not change when you modify
+your command classes, until you re-run L<app-dispatcher>.
+
+=item Application Script
+
+The application script is what your user runs, and does nothing more
+than call the Dispatcher Class:
+
+    #!/usr/bin/perl
+    use Your::Command::Dispatcher;
+    Your::Command::Dispatcher->run;
+
+All the examples below assume the existence of this application script.
+
+=back
+
+The rest of this tutorial is all about how to write your Command
+Classes. Let's start with a simple command with two options, one
+optional argument, and no sub-commands:
+
+    package Your::Command;
+
+    sub opt_spec {(
+        [ "dry-run|n",     "print out SQL instead of running it" ],
+        [ "drop-tables|D", "DROP TABLEs before deploying" ],
+    )};
+
+    sub arg_spec {(
+        [ "database=s",   "which database to deploy to",
+            { default => 'development' } 
+        ],
+    )};
+
+    sub run {
+        my ($class,$opt) = @_;
+
+        if ( $opt->dry_run ) {
+            print "Not ";
+        }
+        print "Deploying to ". $opt->database ."\n";
+    }
+
+    1;
+
+With the above code in 'lib/Your/Command.pm' we can run
+L<app-dispatcher> and then our script:
+
+    ex1$ app-dispatcher --add-help Your::Command
+    Writing lib/Your/Command/Dispatcher.pm
+
+    ex1$ ./ex --help
+    usage: ex [options] [<database>]
+        --help             print usage message and exit
+        -n --dry-run       print out SQL instead of running it
+        -D --drop-tables   DROP TABLEs before deploying
+
+    ex1$ ./ex
+    Deploying to development
+
+    ex1$ ./ex -n production
+    Not Deploying to production
+
+There are several things to note here. The first is the definition of
+the opt_spec() and arg_spec() methods. The values returned from these
+methods are passed more or less untouched to
+L<Getopt::Long::Descriptive>'s describe_options() routine.
+
+Obvious should be the fact that the '-add-help' option to
+L<app-dispatcher> has added a '--help' option to our command.
+
+What is more interesting is that arguments specification has the same
+format as the options specification. An argument could actually be
+considered the same as an un-named option with a fixed position.  So
+L<App::Dispatcher> actually folds arguments into the option object
+passed to the command class. The added benefit is that the parameter
+validation of L<Getopt::Long> is now also run against arguments.
+
+Let's make the argument mandatory by adding a "required" key to the
+arg_spec definition:
+
+    { default => 'development', required => 1 }
+
+    ex2$ ./ex
+    usage: ex [options] <database>
+        --help             print usage message and exit
+        -n --dry-run       print out SQL instead of running it
+        -D --drop-tables   DROP TABLEs before deploying
+
+You can see that the that the argument is now mandatory, and the usage
+message no longer has the '[]' brackets. If the automatically generated
+usage message is not to your liking, you can write a usage_desc()
+method to specify your own, but that is not really recommended as
+you'll have to keep it up to date manually when your code changes:
+
+    sub usage_desc {
+        return '%c %o <DATABASE>'
+    }
+
+Now imagine that your program should have more functions, say for
+example 'deploy', 'test', and 'undeploy', and that you want them to be
+run as sub-commands. We will rewrite 'Your::Command' as follows:
+
+    package Your::Command;
+    
+    sub opt_spec {(
+        [ "dry-run|n",     "print out SQL instead of running it" ],
+    )};
+    
+    sub arg_spec {(
+        [ "command=s",   "what to do", { required => 1 } ],
+    )};
+
+
+What we now have is a global option 'dry-run', that applies to all
+commands, accessed through the third argument to the run() method (see
+below). Because the 'Your::Command' arg_spec defines a mandatory
+argument, our usage message is still displayed when we run our command
+with no arguments.  If we wanted an action to take place when no
+arguments are given, we would make the Your::Command <command> argument
+optional, and reinstate the run() method in that package.
+
+Now we write a new command class 'Your::Command::deploy' as follows (
+'test' and 'undeploy' are similarly written):
+
+    package Your::Command::deploy;
+    
+    sub arg_spec {(
+        [ "database=s",   "production|development",
+            { default => 'development', required => 1 } 
+        ],
+    )};
+    
+    sub run {
+        my ($self,$opt,$gopt) = @_;
+    
+        if ( $gopt->dry_run ) {
+            print "Not ";
+        } 
+        print "Deploying to ". $opt->database ."\n";
+    }
+
+    1;
+    __END__
+    
+    =head1 NAME
+    
+    Your::Command::deploy - deploy to a database
+
+Lets build the dispatcher class again:
+
+    ex3$ app-dispatcher --add-help Your::Command
+    Found lib/Your/Command/test.pm
+    Found lib/Your/Command/undeploy.pm
+    Found lib/Your/Command/deploy.pm
+    Writing lib/Your/Command/Dispatcher.pm
+
+Notice that the dispatcher has found our new command classes, and the
+usage message now shows more information about our subcommands:
+
+    ex3$ ./ex
+    usage: ex [options] <command>
+        --help         print usage message and exit
+        -n --dry-run   print out SQL instead of running it
+
+    Commands:
+        test         test a database
+        deploy       deploy to a database
+        undeploy     undeploy a database
+
+The informational text for sub-commands has been taken from the POD
+documentation in the class file. You can override this by specifying an
+'abstract()' method.
+
+Also displayed contextually correctly are usage messages for our sub
+commands:
+
+    ex3$ ./ex deploy 
+    usage: ex deploy [options] <database>
+        --help    print usage message and exit
+
+You can write sub-sub-commands as far down as you want to go. There is
+however only ever one global option as specified in the Your::Command
+class.
+
+    ex3$ ./ex -n deploy backup
+    Not Deploying to backup
+
+
+=head1 ALTERNATIVES
+
+It seems the current state of the art for command line applications is
+L<App::Cmd>. I wrote L<App::Dispatcher> out of the frustration with the
+time that it takes L<App::Cmd> to simply generate a usage message,
+since L<App::Cmd> loads every command class in my app dynamically.
+
+=head1 AUTHOR
+
+Mark Lawrence E<lt>nomad@null.netE<gt>.
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (C) 2011 Mark Lawrence <nomad@null.net>
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+=cut
+
+# vim: set tabstop=4 expandtab:
