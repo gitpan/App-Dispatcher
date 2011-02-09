@@ -4,6 +4,7 @@ use strict;
 use warnings;
 no warnings 'redefine'; # due to bootstrap/build time effects
 
+our $VERSION = '0.03';
 
 sub opt_spec {(
     [ 'add-help',  "add a '--help' option to every command",],
@@ -16,7 +17,7 @@ sub opt_spec {(
 
 
 sub arg_spec {(
-    [ 'class=s', "root class of your command packages" ],
+    [ 'class=s', "root class of your command packages", { required => 1 } ],
 )}
 
 

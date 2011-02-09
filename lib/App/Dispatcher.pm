@@ -23,7 +23,7 @@ use strict;
 use warnings;
 no warnings 'redefine'; # due to bootstrap/build time effects
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 # partially stolen from ExtUtils::MakeMaker
 sub _abstract {
@@ -220,6 +220,10 @@ App::Dispatcher - build command-line applications with ease
 
 =head1 DESCRIPTION
 
+This is the documentation for the B<App::Dispatcher> class, which is
+not a user-facing component. You most likely want to be reading
+L<App::Dispatcher::Tutorial> instead.
+
 B<App::Dispatcher> is a the implementation for the L<app-dispatcher>(1)
 command.  It exports a single function with has two mandatory
 arguments:
@@ -300,9 +304,6 @@ Optional. A brief description of the command. Will be pulled from the
 POD documentation if not implemented.
 
 =back
-
-See L<App::Dispatcher::Tutorial>(3p) for an introduction about how your
-command classes should be written.
 
 =head1 SEE ALSO
 

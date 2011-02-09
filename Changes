@@ -1,10 +1,26 @@
+0.03 (Released 2011-02-09)
+
+    API Changes:
+        - None.
+
+    New Features:
+        - None.
+
+    Enhancements:
+        - Documentation updates.
+
+    Bug Fixes:
+        - app-dispatcher is supposed to have a mandatory first
+          argument.
+        - Added a VERSION to App::Dispatcher::Command.
+
 0.02 (Released 2011-02-09)
 
     API Changes:
-        - N/A
+        - None.
 
     New Features:
-        - N/A
+        - None.
 
     Enhancements:
         - Improved the tutorial text showing ordering of commands.
@@ -12,20 +28,8 @@
         - Set generated class VERSION to be the same as App::Dispatch.
 
     Bug Fixes:
-        - N/A
+        - None.
 
 0.01 (Released 2011-02-09)
 
     Initial Release.
-
-    API Changes:
-        - N/A
-
-    New Features:
-        - N/A
-
-    Enhancements:
-        - N/A
-
-    Bug Fixes:
-        - N/A

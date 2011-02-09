@@ -11,8 +11,8 @@ L<App::Dispatcher> is a tool for constructing command line applications
 written in Perl.  It is specifically designed to handle applications
 with multiple sub-commands and will generate code to display usage
 text, validate options and arguments, and dispatch commands. Its main
-strength is that the usage and validation does not load any of your
-work classes with their possibly heavy startup dependencies.
+strength is that the usage and validation does not load any 
+command classes with their possibly heavy startup dependencies.
 
 An application built with App::Dispatcher is composed of three parts:
 
@@ -20,28 +20,28 @@ An application built with App::Dispatcher is composed of three parts:
 
 =item Command Classes
 
-These classes are written by you to do the actual work. They have
-special methods which L<App::Dispatcher> uses to build the Dispatcher
-class.
+These classes are written by the application author to do the actual
+work. They have special methods which L<App::Dispatcher> uses to build
+the Dispatcher class.
 
 =item Dispatcher Class
 
-The Dispatcher class is generated when you run the L<app-dispatcher>(1)
-command. The dispatcher class is called by the Application Script at
-runtime.  After performing option and argument processing it calls the
-appropriate Command Class.
+The Dispatcher class is generated when the application author runs the
+L<app-dispatcher>(1) command. The dispatcher class is called by the
+Application Script at runtime.  After performing option and argument
+processing the dispatcher class calls the appropriate Command Class.
 
-The only runtime dependency that the Dispatcher Class needs to run
-is L<Getopt::Long::Descriptive>(3p), which you should add to your
-Makefile.PL and/or Build.PL scripts.
+The only runtime dependency that the Dispatcher Class needs to run is
+L<Getopt::Long::Descriptive>(3p), which the application author should
+add to their Makefile.PL and/or Build.PL scripts.
 
 Note that L<App::Dispatcher> is a code generation tool. This means
-that option and argument processing will not change when you modify
-your command classes, until you re-run L<app-dispatcher>.
+that option and argument processing will not change when command
+classes are modified, until L<app-dispatcher> is re-run.
 
 =item Application Script
 
-The application script is what your user runs, and does nothing more
+The application script is what the user runs, and does nothing more
 than call the Dispatcher Class:
 
     #!/usr/bin/perl
@@ -52,9 +52,9 @@ All the examples below assume the existence of this application script.
 
 =back
 
-The rest of this tutorial is all about how to write your Command
-Classes. Let's start with a simple command with two options, one
-optional argument, and no sub-commands:
+The rest of this tutorial is all about how to write Command Classes.
+Let's start with a simple command that has two options, one optional
+argument, and no sub-commands:
 
     package Your::Command;
 
@@ -134,8 +134,8 @@ you'll have to keep it up to date manually when your code changes:
         return '%c %o <DATABASE>'
     }
 
-Now imagine that your program should have more functions, say for
-example 'deploy', 'test', and 'undeploy', and that you want them to be
+Now imagine that the application should have more functions, for
+example 'test', and 'undeploy', and that they should be
 run as sub-commands. We will rewrite 'Your::Command' as follows:
 
     package Your::Command;
