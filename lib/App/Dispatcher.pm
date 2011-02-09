@@ -22,7 +22,7 @@ use strict;
 use warnings;
 no warnings 'redefine'; # due to bootstrap/build time effects
 
-our $VERSION = '0.04';
+our $VERSION = '0.05';
 
 # partially stolen from ExtUtils::MakeMaker
 sub _abstract {
@@ -162,10 +162,11 @@ sub app_dispatcher {
     }
 
     my $txt;
-    my $file = catfile (qw/ lib _class_ Dispatcher.pm /);
+    my $file = 'Dispatcher.pm.tt';
 
     my $template = Template->new(
-        INCLUDE_PATH => [ 'share', 'templates', eval { dist_dir('App-Dispatcher') } ],
+        INCLUDE_PATH => [ 'share', 'templates',
+            eval { dist_dir('App-Dispatcher') } || () ],
         EVAL_PERL => 1,
     ) || die Template->error;
 
@@ -187,9 +188,7 @@ sub app_dispatcher {
     }
     die "$err\n" if $err;
 
-    my $output = $file;
-    my $classdir = catdir( split( '::', $class ) );
-    $output =~ s!_class_!$classdir!;
+    my $output = catfile('lib', split('::', $class ), 'Dispatcher.pm');
 
     if ( ! $opt->dry_run ) {
         if ( -e $output && -w $output && ! $opt->force) {

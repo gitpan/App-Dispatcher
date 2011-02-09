@@ -1,3 +1,17 @@
+0.05 (Released 2011-02-10)
+
+    API Changes:
+        - None.
+
+    New Features:
+        - None.
+
+    Enhancements:
+        - None.
+
+    Bug Fixes:
+        - Fixed failing POD coverage tests.
+
 0.04 (Released 2011-02-10)
 
     API Changes:
