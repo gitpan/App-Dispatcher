@@ -12,7 +12,6 @@ use Sub::Exporter -setup => {
     ],
     groups => {
         default => [ qw/
-            app_dispatcher
             /,
         ],
     },
@@ -23,7 +22,7 @@ use strict;
 use warnings;
 no warnings 'redefine'; # due to bootstrap/build time effects
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 # partially stolen from ExtUtils::MakeMaker
 sub _abstract {
@@ -206,27 +205,50 @@ sub app_dispatcher {
 }
 
 
+sub opt_spec {(
+    [ 'add-help',  "add a '--help' option to every command",],
+    [ 'inc-dirs|i=s',"directories to search for commands",
+        {default => 'lib'}],
+    [ 'dry-run|n',  "do not write out files",],
+    [ 'force|f',    "force overwrite of existing files",],
+    [ 'verbose|v',  "print code during the build" ],
+)}
+
+
+sub arg_spec {(
+    [ 'class=s', "root class of your command packages", { required => 1 } ],
+)}
+
+
+sub run {
+    my ( $self, $opt ) = @_;
+
+    app_dispatcher( $opt->class, $opt );
+}
+
+
 1;
 __END__
 
 =head1 NAME
 
-App::Dispatcher - build command-line applications with ease
+App::Dispatcher - generate command-line dispatcher classes
 
 =head1 SYNOPSIS
 
-    use App::Dispatcher;
+    use App::Dispatcher qw/app_dispatcher/;
     app_dispatcher( $class, $opt );
 
 =head1 DESCRIPTION
 
-This is the documentation for the B<App::Dispatcher> class, which is
-not a user-facing component. You most likely want to be reading
-L<App::Dispatcher::Tutorial> instead.
+This is the interface documentation for the B<App::Dispatcher> class,
+which is generally not used directly by application authors.  To make
+use of B<App::Dispatcher> in your application you most likely want to
+be reading L<App::Dispatcher::Tutorial> instead.
 
 B<App::Dispatcher> is a the implementation for the L<app-dispatcher>(1)
-command.  It exports a single function with has two mandatory
-arguments:
+command. The implementation is contained in a single subroutine with
+that takes two mandatory arguments:
 
 =over 4
 
@@ -298,12 +320,21 @@ Optional, but at least one of opt_spec or arg_spec should in most cases
 be implemented. A list of argument definitions which will be passed to
 the describe_options method of Getopt::Long::Descriptive.
 
+=item run
+
+Optional, but it only makes sense to be left unimplemented if the
+command requires subcommands. This is the method where the real work is
+performed.
+
 =item abstract
 
 Optional. A brief description of the command. Will be pulled from the
 POD documentation if not implemented.
 
 =back
+
+B<App::Dispatcher> is also its own Command Class. That is, it
+implements the opt_spec(), arg_spec() and run() methods.
 
 =head1 SEE ALSO
 

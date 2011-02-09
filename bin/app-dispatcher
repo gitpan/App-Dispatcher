@@ -2,8 +2,8 @@
 use File::Basename;
 use lib dirname($0).'/../lib';
 
-use App::Dispatcher::Command::Dispatcher;
-App::Dispatcher::Command::Dispatcher->run;
+use App::Dispatcher::Dispatcher;
+App::Dispatcher::Dispatcher->run;
 
 __END__
 

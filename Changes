@@ -1,3 +1,18 @@
+0.04 (Released 2011-02-10)
+
+    API Changes:
+        - App::Dispatcher::app_dispatcher no longer exported by
+          default.
+
+    New Features:
+        - None.
+
+    Enhancements:
+        - Collapsed App::Dispatcher::Command into App::Dispatcher.
+
+    Bug Fixes:
+        - Added missing dependency on Getopt::Long::Descriptive
+
 0.03 (Released 2011-02-09)
 
     API Changes:
