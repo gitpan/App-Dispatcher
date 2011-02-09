@@ -1,3 +1,19 @@
+0.02 (Released 2011-02-09)
+
+    API Changes:
+        - N/A
+
+    New Features:
+        - N/A
+
+    Enhancements:
+        - Improved the tutorial text showing ordering of commands.
+        - Added a new example showing ordering of commands.
+        - Set generated class VERSION to be the same as App::Dispatch.
+
+    Bug Fixes:
+        - N/A
+
 0.01 (Released 2011-02-09)
 
     Initial Release.

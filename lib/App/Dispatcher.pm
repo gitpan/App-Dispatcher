@@ -23,7 +23,7 @@ use strict;
 use warnings;
 no warnings 'redefine'; # due to bootstrap/build time effects
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 # partially stolen from ExtUtils::MakeMaker
 sub _abstract {
@@ -92,6 +92,7 @@ sub app_dispatcher {
 
     my $ref = {
         class     => $class,
+        version   => $VERSION,
         structure => {},
     };
 

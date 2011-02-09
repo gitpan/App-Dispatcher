@@ -26,4 +26,4 @@ requires:
   Pod::Simple: 0
   Sub::Exporter: 0
   Template: 0
-version: 0.01
+version: 0.02

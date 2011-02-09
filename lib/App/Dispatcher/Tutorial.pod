@@ -223,6 +223,34 @@ class.
     ex3$ ./ex -n deploy backup
     Not Deploying to backup
 
+By default, commands are listed in a semi-random order. If you want to
+list them in an order that makes more sense (for example in the order
+they would typicaly be run) you can add an order() method to each class
+which returns an integer.
+
+    package Your::Command::deploy;
+
+    sub order {1};
+
+    package Your::Command::test;
+
+    sub order {2};
+
+    package Your::Command::undeploy;
+
+    sub order {3};
+
+And now we have:
+
+    ex4$ ./ex 
+    usage: ex [options] <command>
+        --help         print usage message and exit
+        -n --dry-run   print out SQL instead of running it
+
+    Commands:
+        deploy       deploy to a database
+        test         test a database
+        undeploy     undeploy a database
 
 =head1 ALTERNATIVES
 

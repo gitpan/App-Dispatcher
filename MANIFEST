@@ -36,3 +36,9 @@ examples/ex3/lib/Your/Command/test.pm
 examples/ex3/lib/Your/Command/undeploy.pm
 examples/ex3/lib/Your/Command/deploy.pm
 examples/ex3/lib/Your/Command/Dispatcher.pm
+examples/ex4/ex
+examples/ex4/lib/Your/Command.pm
+examples/ex4/lib/Your/Command/test.pm
+examples/ex4/lib/Your/Command/undeploy.pm
+examples/ex4/lib/Your/Command/deploy.pm
+examples/ex4/lib/Your/Command/Dispatcher.pm

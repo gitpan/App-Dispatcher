@@ -1,0 +1,7 @@
+#!/usr/bin/perl
+use File::Basename;
+use File::Spec::Functions qw/catdir/;
+use lib catdir(dirname($0), 'lib');
+
+use Your::Command::Dispatcher;
+Your::Command::Dispatcher->run;
