@@ -7,7 +7,10 @@ build_requires:
   Test::More: 0
 configure_requires:
   ExtUtils::MakeMaker: 6.42
+  File::ShareDir: 0
   Getopt::Long::Descriptive: 0
+  Sub::Exporter: 0
+  Template: 0
 distribution_type: module
 generated_by: 'Module::Install version 1.00'
 license: gpl
@@ -24,9 +27,9 @@ no_index:
     - xt
 requires:
   File::ShareDir: 0
-  Pod::Simple: 0
+  Getopt::Long::Descriptive: 0
   Sub::Exporter: 0
   Template: 0
 resources:
   license: http://opensource.org/licenses/gpl-license.php
-version: 0.05
+version: 0.06

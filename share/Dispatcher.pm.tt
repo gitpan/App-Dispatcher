@@ -91,7 +91,7 @@ sub run {
     }
     # Expecting an argument but don't have one?
     elsif ( @ARGV < @arg_spec ) {
-        if ( $arg_spec[0]->[2]->{required} ) {
+        if ( exists $arg_spec[0]->[2]->{required} ) {
             my $x = $arg_spec[0]->[0];
             $x =~ s/[\|=].*//;
     #        print STDERR "Missing argument: <$x>\n\n";
@@ -133,8 +133,8 @@ sub run {
         }
     }
 
-    foreach my $arg ( @arg_spec ) {
-        my $val = shift @ARGV;
+    foreach my $val ( @ARGV ) {
+        my $arg = shift @arg_spec;
         my $x = $arg->[0];
         $x =~ s/[|=].*//;
         push( @newargv, '--'.$x, $val );
@@ -160,7 +160,7 @@ sub run {
     }
 
     if ( ! $cmd->can('run') ) {
-        die "$cmd missing run() method\n";
+        die "$cmd missing run() method or 'required' attribute on arg 1\n";
     }
     return $cmd->run( $opt, $gopt );
 }
@@ -215,3 +215,5 @@ the Free Software Foundation; either version 3 of the License, or
 (at your option) any later version.
 
 =cut
+
+# vim: set tabstop=4 expandtab:

@@ -1,3 +1,23 @@
+0.06 (Released 2011-02-11)
+
+    API Changes:
+        - None.
+
+    New Features:
+        - None.
+
+    Enhancements:
+        - Improved runtime error message about missing run() method.
+
+    Bug Fixes:
+        - Compare arguments against arg_spec, not the reverse.
+        - Don't auto-vivify 'required' parameter.
+        - Check argument specs contain '=' or *':'*.
+
+    Other:
+        - All dependencies must also be 'configure_depends'.
+        - Remove un-needed POD::Simple dependency.
+
 0.05 (Released 2011-02-10)
 
     API Changes:

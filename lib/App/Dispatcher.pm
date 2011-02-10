@@ -2,7 +2,6 @@ package App::Dispatcher;
 use Carp qw/croak confess/;
 use File::Spec::Functions qw/catdir catfile splitdir/;
 use File::Find;
-use Pod::Simple;
 use Template;
 use File::ShareDir qw/dist_dir/;
 use Sub::Exporter -setup => {
@@ -22,7 +21,7 @@ use strict;
 use warnings;
 no warnings 'redefine'; # due to bootstrap/build time effects
 
-our $VERSION = '0.05';
+our $VERSION = '0.06';
 
 # partially stolen from ExtUtils::MakeMaker
 sub _abstract {
@@ -133,7 +132,7 @@ sub app_dispatcher {
             if @{ $refp->{opt_spec} };
             
         foreach my $arg ( @{ $refp->{arg_spec} } ) {
-            unless ( $arg->[0] =~ /[|=]/) {
+            unless ( $arg->[0] =~ /[=:]/) {
                 warn "$plugin: setting type spec to '=s': $arg->[0]\n";
                 $arg->[0] .= '=s';
             }
