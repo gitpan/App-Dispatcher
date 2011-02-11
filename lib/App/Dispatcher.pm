@@ -21,7 +21,7 @@ use strict;
 use warnings;
 no warnings 'redefine'; # due to bootstrap/build time effects
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 
 # partially stolen from ExtUtils::MakeMaker
 sub _abstract {

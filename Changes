@@ -7,6 +7,23 @@
         - None.
 
     Enhancements:
+        - None.
+
+    Bug Fixes:
+        - Don't test old App::Dispatcher::Command::Dispatcher
+
+    Other:
+        - Added a README file.
+
+0.06 (Released 2011-02-11)
+
+    API Changes:
+        - None.
+
+    New Features:
+        - None.
+
+    Enhancements:
         - Improved runtime error message about missing run() method.
 
     Bug Fixes:

@@ -3,7 +3,7 @@ use strict;
 use warnings;
 
 # Just check that Makefile.PL did its stuff.
-use_ok('App::Dispatcher::Command::Dispatcher');
-can_ok('App::Dispatcher::Command::Dispatcher', 'run');
+use_ok('App::Dispatcher::Dispatcher');
+can_ok('App::Dispatcher::Dispatcher', 'run');
 
 done_testing();
