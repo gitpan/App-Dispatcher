@@ -1,4 +1,4 @@
-0.09 (Released 2011-03-24)
+0.09, 0.10 (Released 2011-03-24)
 
     API Changes:
         - None.
@@ -13,8 +13,8 @@
         - None.
 
     Other:
-        - This release is purely to include a real Changes file (which
-          0.08 missed).
+        - These releases were purely to include a real Changes file
+          (which 0.08 and 0.09 missed).
 
 0.08 (Released 2011-03-24)
 
