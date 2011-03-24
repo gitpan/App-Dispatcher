@@ -1,17 +1,24 @@
 package App::Dispatcher;
 use Carp qw/croak confess/;
+use Getopt::Long::Descriptive qw/describe_options/;
 use File::Spec::Functions qw/catdir catfile splitdir/;
 use File::Find;
 use Template;
+use Perl::Tidy qw/perltidy/;
+use Pod::Tidy;
+use File::Slurp;
 use File::ShareDir qw/dist_dir/;
 use Sub::Exporter -setup => {
-    exports => [ qw/
-        app_dispatcher
-        /,
+    exports => [
+        qw/
+          app_dispatcher
+          app_dispatcher_opts
+          /,
     ],
     groups => {
-        default => [ qw/
-            /,
+        default => [
+            qw/
+              /,
         ],
     },
 
@@ -19,9 +26,9 @@ use Sub::Exporter -setup => {
 use lib 'lib';
 use strict;
 use warnings;
-no warnings 'redefine'; # due to bootstrap/build time effects
+no warnings 'redefine';    # due to bootstrap/build time effects
 
-our $VERSION = '0.07';
+our $VERSION = '0.08';
 
 # partially stolen from ExtUtils::MakeMaker
 sub _abstract {
@@ -35,8 +42,9 @@ sub _abstract {
     local $/ = "\n";
     my $inpod;
 
-    while (local $_ = <$fh>) {
-        $inpod = /^=cut/ ? !$inpod : $inpod || /^=(?!cut)/; # =cut toggles, it doesn't end :-/
+    while ( local $_ = <$fh> ) {
+        $inpod = /^=cut/ ? !$inpod : $inpod
+          || /^=(?!cut)/;    # =cut toggles, it doesn't end :-/
 
         next unless $inpod;
         chomp;
@@ -47,80 +55,116 @@ sub _abstract {
     return $result || "(unknown)";
 }
 
-
 sub app_dispatcher {
-    my $caller = caller;
+    my $class = shift || croak 'app_dispatcher($class,$opt)';
+    my $opt   = shift || croak 'app_dispatcher($class,$opt)';
 
-    my $class  = shift || croak 'app_dispatcher($class,$opt)';
-    my $opt    = shift || croak 'app_dispatcher($class,$opt)';
+    $opt->{add_mtime_check} = 1 if $opt->{add_debug};
 
-    # Only find modules underneath us - not the whole search path
-    my @dirs = map { glob $_ } split(/,/, $opt->inc_dirs);
+    my $outdir = catdir( 'lib', split( '::', $class ) );
+    my $output = catfile( $outdir, 'Dispatcher.pm' );
 
+    my @paths = @{ $opt->path };
+
+    # Do the searching manually so we don't pick up
+    # command classes installed somewhere else.
     my $classfile;
-    foreach my $dir ( @dirs ) {
-        my $try = catdir( $dir, split('::', $class ) ) .'.pm';
-        $classfile = $try if ( -e $try );
+    foreach my $dir (@paths) {
+        my $try = catdir( $dir, split( '::', $class ) ) . '.pm';
+        if ( $opt->verbose ) {
+            print "Trying $try\n";
+        }
+        if ( -e $try ) {
+            $classfile = $try;
+            print "Found $classfile\n" if $opt->verbose;
+            last;
+        }
     }
 
-    if ( ! $classfile ) {
-        die "Cannot find class '$class' (searched: @dirs)\n";
+    if ( !$classfile ) {
+        die "Cannot find class '$class' (searched: @paths)\n";
     }
 
-    my @plugins = ( $class );
-    my @files   = ( $classfile );
+    my @plugins = ($class);
+    my @files   = ($classfile);
 
-    foreach my $dir ( @dirs ) {
-        my $realdir = catdir( $dir, split('::', $class ) );
+    foreach my $dir (@paths) {
+        my $realdir = catdir( $dir, split( '::', $class ) );
+        if ( $opt->verbose ) {
+            print "Searching in $dir\n";
+        }
         next unless -d $realdir;
-        find( sub {
-            return unless -f $_;
-            return unless $_ =~ m/\.pm$/;
-            my $p = $File::Find::name;
-            $p =~ s!^$dir!!;
-            $p =~ s/\.pm//;
-            $p = join( '::', splitdir($p) );
-            $p =~ s/^:://g;
-            return if ( $p eq $class .'::Dispatcher' );
-            push( @plugins, $p ); 
-            push( @files, $File::Find::name ); 
-            print "Found $File::Find::name\n";
-        }, $realdir );
+        find(
+            sub {
+                return unless -f $_;
+                return unless $_ =~ m/\.pm$/;
+                my $p = $File::Find::name;
+                $p =~ s!^$dir!!;
+                $p =~ s/\.pm//;
+                $p = join( '::', splitdir($p) );
+                $p =~ s/^:://g;
+                return if ( $p eq $class . '::Dispatcher' );
+                push( @plugins, $p );
+                push( @files,   $File::Find::name );
+            },
+            $realdir
+        );
     }
 
     my $ref = {
-        class     => $class,
-        version   => $VERSION,
-        structure => {},
+        class           => '__App__Dispatcher__Test__Class__',
+        version         => $VERSION,
+        add_debug       => $opt->add_debug,
+        add_mtime_check => $opt->add_mtime_check,
+        structure       => {},
     };
 
-    foreach my $plugin ( @plugins ) {
-        my $file =  shift @files;
+    # Make sure @INC is good for 'require'
+    unshift @INC, @{ $opt->inc }, @paths;
+
+    foreach my $plugin (@plugins) {
+        my $file = shift @files;
+        if ( $opt->verbose ) {
+            print "Working $file\n";
+        }
         require $file;
 
-        (my $name = $plugin ) =~ s/^${class}:://;
-        ( $name = $plugin ) =~ s/.*:://;
-        (my $usage = $plugin ) =~ s/^${class}/usage: %c/;
+        ( my $name  = $plugin ) =~ s/^${class}:://;
+        ( $name     = $plugin ) =~ s/.*:://;
+        ( my $usage = $plugin ) =~ s/^${class}/usage: %c/;
         $usage =~ s/::/ /g;
 
+        my @opt;
+        if ( $opt->add_help ) {
+            push( @opt, [ 'help|h', 'print usage message and exit' ] );
+        }
+        if ( $opt->add_debug and $plugin eq $class ) {
+            push(
+                @opt,
+                [
+                    'debug-dispatcher',
+                    'print App::Dispatcher debug information'
+                ]
+            );
+        }
+
         my $refp = $ref->{structure}->{$plugin} = {
-            name        => $name,
-            class       => $plugin,
-            abstract    => _abstract( $plugin, $file ),
-            order       => 2**31-1, # just a big number, nothing special
-            opt_spec    => $opt->add_help
-                ? [ ['help', 'print usage message and exit' ] ]
-                : [],
-            arg_spec    => [],
+            name     => $name,
+            class    => $plugin,
+            abstract => _abstract( $plugin, $file ),
+            order         => 2**31 - 1,    # just a big number, nothing special
+            opt_spec      => \@opt,
+            arg_spec      => [],
+            require_order => 0,
+            getopt_conf   => [],
         };
 
         if ( $plugin->can('order') ) {
             $refp->{order} = $plugin->order;
         }
 
-
         if ( $plugin->can('opt_spec') ) {
-            push( @{$refp->{opt_spec}}, $plugin->opt_spec );
+            push( @{ $refp->{opt_spec} }, $plugin->opt_spec );
         }
 
         if ( $plugin->can('arg_spec') ) {
@@ -129,10 +173,10 @@ sub app_dispatcher {
 
         $refp->{usage_desc} = $usage;
         $refp->{usage_desc} .= ' [options]'
-            if @{ $refp->{opt_spec} };
-            
+          if @{ $refp->{opt_spec} };
+
         foreach my $arg ( @{ $refp->{arg_spec} } ) {
-            unless ( $arg->[0] =~ /[=:]/) {
+            unless ( $arg->[0] =~ /[=:]/ ) {
                 warn "$plugin: setting type spec to '=s': $arg->[0]\n";
                 $arg->[0] .= '=s';
             }
@@ -143,13 +187,20 @@ sub app_dispatcher {
         }
 
         if ( @{ $refp->{arg_spec} } ) {
-            $refp->{usage_desc} .= ' '.
-                join(' ', map {
-                    (my $x = $_->[0]) =~ s/(.*)[|=].*/$1/;
+            $refp->{usage_desc} .= ' ' . join(
+                ' ',
+                map {
+                    ( my $x = $_->[0] ) =~ s/(.*)[|=].*/$1/;
                     exists $_->[2]->{required} ? "<$x>" : "[<$x>]";
-                } @{ $refp->{arg_spec}} );
+                  } @{ $refp->{arg_spec} }
+            );
         }
 
+        if ( $plugin eq $class and @plugins > 1 ) {
+            $refp->{usage_desc} .= ' [...]';
+        }
+
+        # Wipe away all our hard work
         if ( $plugin->can('usage_desc') ) {
             $refp->{usage_desc} = $plugin->usage_desc;
         }
@@ -158,72 +209,101 @@ sub app_dispatcher {
             $refp->{abstract} = $plugin->abstract;
         }
 
+        if ( eval { $plugin->require_order } ) {
+            $refp->{require_order} = 1;
+            $refp->{getopt_conf}   = ['require_order'];
+        }
+        else {
+            $refp->{getopt_conf} = ['permute'];
+        }
     }
 
-    my $txt;
-    my $file = 'Dispatcher.pm.tt';
+    print "Generating $output\n";
 
     my $template = Template->new(
-        INCLUDE_PATH => [ 'share', 'templates',
-            eval { dist_dir('App-Dispatcher') } || () ],
+        INCLUDE_PATH =>
+          [ 'share', '../share', eval { dist_dir('App-Dispatcher') } || () ],
         EVAL_PERL => 1,
     ) || die Template->error;
 
-    $template->process( $file, $ref, \$txt )
-        || die "Template: ". $template->error ."\n";
+    my $txt;
+    $template->process( 'Dispatcher.pm.tt', $ref, \$txt )
+      || die "Template: " . $template->error . "\n";
 
     eval "$txt";
-
-    my $err = $@;
-
-    if ( $err or $opt->verbose ) {
+    if ( my $err = $@ ) {
         my $i = 0;
-        foreach ( split(/\n/, $txt) ) {
-            $err 
-                ? printf STDERR "%3d %s\n", ++$i, $_
-                : printf STDOUT "%3d %s\n", ++$i, $_;
-        }
-        print "\n";
+        map { printf STDERR "%-03s $_\n", $i++ } split( /\n/, $txt );
+        die $err;
     }
-    die "$err\n" if $err;
 
-    my $output = catfile('lib', split('::', $class ), 'Dispatcher.pm');
+    my $tidy;
+    $txt =~ s/__App__Dispatcher__Test__Class__/$class/g;
+    perltidy( source => \$txt, destination => \$tidy, argv => [] );
 
-    if ( ! $opt->dry_run ) {
-        if ( -e $output && -w $output && ! $opt->force) {
-            die "$output is writable! (use -f to overwrite)";
+    if ( -e $output && -w $output && !$opt->force ) {
+        die "$output is writable! (use -f to overwrite)\n";
+    }
+
+    if ( !$opt->dry_run ) {
+        if ( !-d $outdir ) {
+            mkdir $outdir || die "mkdir: $!";
         }
-        print "Writing $output\n";
-        unlink $output;
-        $template->process( $file, $ref, $output )
-            || die $template->error;
-        chmod(0444, $output) || die "chmod: $!";
+
+        unlink $output || die "unlink: $!";
+        write_file( $output, $tidy );
+
+        Pod::Tidy::tidy_files(
+            files    => [$output],
+            inplace  => 1,
+            nobackup => 1,
+            columns  => 72
+        );
+        chmod( 0444, $output ) || die "chmod: $!";
     }
     return 0;
 }
 
+sub opt_spec {
+    (
+        [ 'add-help|H',        "add a '--help' option to every command", ],
+        [ 'add-debug|D',       "add a global '--debug-dispatcher' option", ],
+        [ 'add-mtime-check|M', "check for out of date command files" ],
+        [ 'inc|I=s@', "add to the perl \@INC array", { default => [] } ],
+        [
+            'path|p=s@',
+            "directory to search for command classes",
+            { default => ['lib'] }
+        ],
+        [ 'dry-run|n', "do not write out files", ],
+        [ 'force|f',   "force overwrite of existing files", ],
+        [ 'verbose|v', "run loudly" ],
+    );
+}
 
-sub opt_spec {(
-    [ 'add-help',  "add a '--help' option to every command",],
-    [ 'inc-dirs|i=s',"directories to search for commands",
-        {default => 'lib'}],
-    [ 'dry-run|n',  "do not write out files",],
-    [ 'force|f',    "force overwrite of existing files",],
-    [ 'verbose|v',  "print code during the build" ],
-)}
+sub arg_spec {
+    ( [ 'class=s', "root class of your command packages", { required => 1 } ],
+    );
+}
 
+sub app_dispatcher_opts {
+    local @ARGV = @_;
+    my ( $opt, $usage ) = eval {
+        describe_options(
+            '(not a user
+    command)', ( opt_spec, arg_spec )
+        );
+    };
 
-sub arg_spec {(
-    [ 'class=s', "root class of your command packages", { required => 1 } ],
-)}
-
+    die "Invalid options: $@" if ($@);
+    return $opt;
+}
 
 sub run {
     my ( $self, $opt ) = @_;
 
     app_dispatcher( $opt->class, $opt );
 }
-
 
 1;
 __END__
@@ -256,19 +336,37 @@ that takes two mandatory arguments:
 
 =item $class
 
-The name space under which the command classes
-will be searched for.
+The name space under which the command classes will be searched for.
 
 =item $opt
 
-A L<Getopt::Long::Descriptive::Opts> (or equivalent) object
-with the following methods:
+A L<Getopt::Long::Descriptive::Opts> (or equivalent) object with the
+following methods:
 
 =over 4
 
-=item inc_dirs
+=item add_help
 
-A comma-separated list of directories to search in.
+Add a '--help' option to every command.
+
+=item add_debug
+
+Add a global '--debug-dispatcher' option. Useful for debugging the
+actual options your command classes are receiving. Automatically turns
+on 'add_mtime_check'.
+
+=item add_mtime_check
+
+Warn at dispatch time if the command class file has a more recent
+modification date than the dispatch class.
+
+=item inc
+
+Arrayref to add to @INC.
+
+=item path
+
+Arrayref of directories to search for command classes.
 
 =item verbose
 
@@ -292,9 +390,21 @@ A successful run of app_dispatcher() results in the creation of
 'lib/$class/Dispatcher.pm', which is based on the Command Classes found
 under 'lib/$class'.
 
+=over 4
+
+=item app_dispatcher_opts( @args )
+
+=back
+
 The command classes may have the following methods defined:
 
 =over 4
+
+=item require_order
+
+Optional. An boolean to set the L<Getopt::Long> option 'require_order'
+when true, or set option 'permute' (the default) when false (or not
+defined).
 
 =item order
 
@@ -346,11 +456,11 @@ Mark Lawrence E<lt>nomad@null.netE<gt>
 
 Copyright (C) 2011 Mark Lawrence <nomad@null.net>
 
-This program is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 3 of the License, or
-(at your option) any later version.
+This program is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 3 of the License, or (at your
+option) any later version.
 
 =cut
 
-# vim: set tabstop=4 expandtab:
+z vim: set tabstop=4 expandtab:

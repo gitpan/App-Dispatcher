@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 use File::Basename;
-use lib dirname($0).'/../lib';
+use lib dirname($0) . '/../lib';
 
 use App::Dispatcher::Dispatcher;
 App::Dispatcher::Dispatcher->run;
@@ -14,7 +14,7 @@ app-dispatcher - build command line applications in Perl
 
 =head1 SYNOPSIS
 
-  app-dispatcher [-v] [-n] [-f] [-i dirs] Your::Class
+  app-dispatcher [options] Your::Class
 
 =head1 DESCRIPTION
 
@@ -51,6 +51,26 @@ classes should be written.
 
 Print usage message and exit.
 
+=item --add-help, -H
+
+Add a '--help' option to every command.
+
+=item --add-debug, -D
+
+Add a global '--debug-dispatcher' option. Useful for debugging the
+actual options your command classes are receiving. Automatically
+enables '--add-mtime-check'.
+
+=item --add-mtime-check, -M
+
+Warn at dispatch time if the command class file has a more recent
+modification date than the dispatch class.
+
+=item --perl-include, -I
+
+Can be called multiple times to add to the Perl include list. Same
+effect as 'perl -I'.
+
 =item --inc-dirs, -i
 
 A comma-separated list of directories to search in. Defaults to 'lib'.
@@ -74,8 +94,7 @@ lib/Your/Class/Dispatcher.pm exists and is writeable.
 
 =head1 SEE ALSO
 
-L<App::Dispatcher>(3p),
-L<App::Dispatcher::Tutorial>(3p)
+L<App::Dispatcher>(3p), L<App::Dispatcher::Tutorial>(3p)
 
 =head1 AUTHOR
 
@@ -85,10 +104,10 @@ Mark Lawrence E<lt>nomad@null.netE<gt>
 
 Copyright 2011 Mark Lawrence E<lt>nomad@null.netE<gt>
 
-This program is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 3 of the License, or
-(at your option) any later version.
+This program is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 3 of the License, or (at your
+option) any later version.
 
 =cut
 

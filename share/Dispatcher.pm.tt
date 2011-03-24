@@ -11,11 +11,14 @@ my $me = prog_name;
 
 my $program = [% PERL %]
 
-use Data::Dumper;
-$Data::Dumper::Indent = 1;
-my $x = Dumper $stash->{structure};
-$x =~ s/\$VAR1 = //;
-print $x;
+{
+    use Data::Dumper;
+    local $Data::Dumper::Indent = 1;
+    local $Data::Dumper::Maxdepth = 0;
+    my $x = Dumper $stash->{structure};
+    $x =~ s/\$VAR1 = //;
+    print $x;
+}
 
 [% END %]
 
@@ -24,116 +27,159 @@ sub _commands {
     my $cmd = shift;
     require List::Util;
 
-    my $max = 4 + List::Util::max(map { length $_->{name} } values %$program);
-    my @commands = map {
-        sprintf("    %-${max}s %s\n", $_->{name}, $_->{abstract})
-    } sort {
-        $a->{order} <=> $b->{order}
-    } grep {
+    my @commands = grep {
         $_->{class} =~ m/${cmd}::/ and not
         $_->{class} =~ m/${cmd}::.*:/
     } values %$program;
-    return @commands;
+
+    return unless @commands;
+
+    my $max = 4 + List::Util::max(map { length $_->{name} } @commands);
+
+    return map { sprintf("    %-${max}s %s\n", $_->{name},
+    $_->{abstract}) } sort { $a->{order} <=> $b->{order} } @commands;
+}
+
+sub _message {
+    my ( $cmd, $usage, $FD ) = @_;
+
+    print $FD $usage->text;
+
+    my @arg_spec = @{ $program->{ $cmd }->{arg_spec} };
+    return unless @arg_spec;
+
+    my @commands = _commands( $cmd );
+
+    if ( @commands ) {
+        my $x = $arg_spec[0]->[0];
+        $x =~ s/[\|=].*//;
+
+        print $FD "\nValid values for <$x> include:\n";
+        print $FD join('', @commands );
+    }
+}
+
+sub _usage {
+    _message( @_, *STDERR );
+    exit 2;
+}
+
+sub _help {
+    _message( @_, *STDOUT );
+    exit 1;
 }
 
 
+[% IF add_mtime_check %]
+sub _mtime_check {
+    my $cmd = shift;
+    require Module::Load;
+    Module::Load::load( $cmd );
+
+    (my $plugin_file = $cmd . '.pm') =~ s!::!/!g;
+
+    my $file = $INC{$plugin_file};
+
+    if ( -M $file < -M __FILE__ ) {
+        warn "warning: ". __PACKAGE__ ." is out of date:\n    " .
+            scalar localtime((stat(__FILE__))[9]) ." ".__FILE__."\n    " .
+            scalar localtime((stat($file))[9]) ." $file\n" ;
+    }
+}
+[% END %]
+
+
 sub run {
+    my $class = shift;
 
     my $cmd = '[% class %]';
+[% IF add_mtime_check %]
+    _mtime_check( $cmd );
+[% END %]
+
+    my @ORIG_ARGV = @ARGV;
 
     # Global options, possibly actual (main) command options
     my ($gopt, $gusage) = describe_options(
         $program->{$cmd}->{usage_desc},
         @{ $program->{$cmd}->{opt_spec}},
-        { getopt_conf => [ 'require_order' ], },
+        { getopt_conf => $program->{$cmd}->{getopt_conf} },
     );
 
-    if ( $gopt->can('help') && $gopt->help ) {
-        print STDOUT $gusage->text;
-        if ( my @commands = _commands( $cmd ) ) {
-            print STDERR "\nCommands:\n";
-            print STDERR join('', @commands );
-        }
-        exit 1;
+[% IF add_debug %]
+    my $debug = $gopt->debug_dispatcher;
+    if ( $debug ) {
+        print __PACKAGE__.": $cmd @ORIG_ARGV\n";
+        print __PACKAGE__.":   gopt:\n";
+        map { print __PACKAGE__ .":     ". $_ .' => '. $gopt->$_ ."\n" }
+        keys %$gopt;
     }
+[% END %]
 
+    _help( $cmd, $gusage ) if ( $gopt->can('help') && $gopt->help );
 
     # Look for a subcommand
     while ( @ARGV && exists $program->{$cmd .'::'. $ARGV[0]} ) {
         $cmd = $cmd .'::'. shift @ARGV;
     }
 
+[% IF add_debug %]
+    print __PACKAGE__.": $cmd @ARGV\n" if $debug;
+[% END %]
+
+[% IF add_mtime_check %]
+    _mtime_check( $cmd );
+[% END %]
+
     my ($opt, $usage) = ($gopt, $gusage);
     if ( $cmd ne '[% class %]' ) {
         ($opt, $usage) = describe_options(
             $program->{$cmd}->{usage_desc},
             @{ $program->{$cmd}->{opt_spec} },
-            { getopt_conf => [ 'require_order' ], },
+            { getopt_conf => $program->{$cmd}->{getopt_conf} },
         );
     }
 
-    if ( $opt->can('help') && $opt->help ) {
-        print STDOUT $usage->text;
-        if ( my @commands = _commands( $cmd ) ) {
-            print STDERR "\nCommands:\n";
-            print STDERR join('', @commands );
-        }
-        exit 1;
+[% IF add_debug %]
+    if ( $debug and $cmd ne '[% class %]' ) {
+        print __PACKAGE__.":   opt:\n";
+        map { print __PACKAGE__ .":     ". $_ .' => '. $opt->$_ ."\n"}
+        keys %$opt;
+        print __PACKAGE__.": $cmd @ARGV\n";
     }
+[% END %]
+
+    _help( $cmd, $usage ) if ( $opt->can('help') && $opt->help );
 
     my @arg_spec = @{ $program->{$cmd}->{arg_spec} };
 
-    # Still have an argument, but no expecting one?
-    if ( @ARGV > @arg_spec ) {
-        print STDERR "Too many arguments\n";
-        print STDERR $usage->text;
-        exit 2;
-    }
-    # Expecting an argument but don't have one?
-    elsif ( @ARGV < @arg_spec ) {
-        if ( exists $arg_spec[0]->[2]->{required} ) {
-            my $x = $arg_spec[0]->[0];
-            $x =~ s/[\|=].*//;
-    #        print STDERR "Missing argument: <$x>\n\n";
-            print STDERR $usage->text;
-            if ( my @commands = _commands( $cmd ) ) {
-                print STDERR "\nCommands:\n";
-                print STDERR join('', @commands );
-            }
-            exit 2;
+
+    # Missing a required argument?
+    my @narg_spec = @arg_spec;
+    while ( scalar @narg_spec > scalar @ARGV ) {
+[% IF add_debug %]
+        if ( $debug ) {
+            print __PACKAGE__.": arg_spec/ARGV ".scalar @narg_spec.'.'.
+            @ARGV ."\n";
         }
+[% END %]
+        my $arg = pop @narg_spec;
+        next unless ( exists $arg->[2]->{required} );
+
+        _usage( $cmd, $usage );
     }
 
-
+    # Now rebuild the whole command line that includes options and
+    # arguments together.
     my @newargv;
+    my @remainder;
 
-
-    foreach my $opt_spec ( @{ $program->{$cmd}->{opt_spec} } ) {
-        my $x = $opt_spec->[0];
-        $x =~ s/[\|=].*//;
-        (my $x2 = $x) =~ s/-/_/;
-
-        if ( $opt_spec->[0] =~ /=/ ) {
-            if ( $cmd eq '[% class %]' ) {
-                push( @newargv, '--'.$x, $gopt->$x2 ) if ( exists
-                $gopt->{$x2} );
-            } else {
-                push( @newargv, '--'.$x, $opt->$x2 ) if ( exists
-                $opt->{$x2} );
-            }
+    my $i = 0;
+    while ( my $val = shift @ARGV ) {
+        if ( !@arg_spec ) {
+            @remainder = ( $val, @ARGV );
+            last;
         }
-        else {
-            if ( $cmd eq '[% class %]' ) {
-                push( @newargv, '--'.$x) if ( exists
-                $gopt->{$x2} );
-            } else {
-                push( @newargv, '--'.$x ) if ( exists
-                $opt->{$x2} );
-            }
-        }
-    }
-
-    foreach my $val ( @ARGV ) {
         my $arg = shift @arg_spec;
         my $x = $arg->[0];
         $x =~ s/[|=].*//;
@@ -142,27 +188,45 @@ sub run {
 
     @ARGV = @newargv;
 
-    ($opt, $usage) = describe_options(
+[% IF add_debug %]
+    if ( $debug ) {
+        print __PACKAGE__.": \@remainder: @remainder\n";
+        print __PACKAGE__.": $cmd @ARGV\n";
+    }
+[% END %]
+
+    my ($new_opt, $new_usage) = describe_options(
         $program->{$cmd}->{usage_desc},
+        @{ $program->{$cmd}->{arg_spec} },
+        map { [ $_->[0], $_->[1] ] } # ignore 'require', 'default'
         @{ $program->{$cmd}->{opt_spec} },
-        @{ $program->{$cmd}->{arg_spec} }
     );
+
+    while (my ($key,$val) = each %$opt ) {
+        $new_opt->{$key} = $val;
+    }
+    $opt = $new_opt;
+
+    @ARGV = @remainder;
+
+[% IF add_debug %]
+    if ( $debug ) {
+        print __PACKAGE__.":   opt:\n";
+        map { print __PACKAGE__ .":     ". $_ .' => '. $opt->$_ . "\n"}
+        keys %$opt;
+        print __PACKAGE__.": $cmd\->run( \$opt, \$gopt ) @ARGV\n\n";
+    }
+[% END %]
 
     require Module::Load;
     Module::Load::load( $cmd );
 
-    if ( @ARGV ) {
-        my $subcmd = 'run_'. $ARGV[0];
-        if ( $cmd->can( $subcmd ) ) {
-            shift @ARGV; 
-            return $cmd->$subcmd( $opt, \@ARGV );
-        }
-    }
-
+    # FIXME move this check into App::Dispatcher?
     if ( ! $cmd->can('run') ) {
+        _usage( $cmd, $usage );
         die "$cmd missing run() method or 'required' attribute on arg 1\n";
     }
-    return $cmd->run( $opt, $gopt );
+    return $cmd->run( $opt, $gopt, $usage, $gusage );
 }
 
 

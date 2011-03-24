@@ -1,4 +1,29 @@
-0.06 (Released 2011-02-11)
+0.08 (Released 2011-03-24)
+
+    API Changes:
+        - None.
+
+    New Features:
+        - Added '--add-debug' to app-dispatcher which enables a
+          runtime '--debug-dispatcher' option to track dispatching
+          logic.
+
+        - Command classes can now define a 'require_order' method to
+          force options before any following arguments.
+
+        - A new app_dispatcher_opts() function in App::Dispatcher.
+
+    Enhancements:
+        - Lots of refactoring.
+        - First attempt at some decent tests.
+
+    Bug Fixes:
+        - None.
+
+    Other:
+        - None.
+
+0.07 (Released 2011-02-11)
 
     API Changes:
         - None.

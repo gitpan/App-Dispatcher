@@ -5,167 +5,131 @@ use Getopt::Long::Descriptive qw/describe_options prog_name/;
 use strict;
 use warnings;
 
-our $VERSION = '0.03';
+our $VERSION = '0.05';
 
 my $me = prog_name;
 
 my $program = {
-  'Your::Command' => {
-    'usage_desc' => 'usage: %c [options] <command>',
-    'opt_spec' => [
-      [
-        'help',
-        'print usage message and exit'
-      ],
-      [
-        'dry-run|n',
-        'print out SQL instead of running it'
-      ]
-    ],
-    'arg_spec' => [
-      [
-        'command=s',
-        'what to do',
-        {
-          'required' => 1
-        }
-      ]
-    ],
-    'order' => 2147483647,
-    'name' => 'Command',
-    'abstract' => '(unknown)',
-    'class' => 'Your::Command'
-  },
-  'Your::Command::deploy' => {
-    'usage_desc' => 'usage: %c deploy [options] <database>',
-    'opt_spec' => [
-      [
-        'help',
-        'print usage message and exit'
-      ]
-    ],
-    'arg_spec' => [
-      [
-        'database=s',
-        'production|development',
-        {
-          'required' => 1,
-          'default' => 'development'
-        }
-      ]
-    ],
-    'order' => 2147483647,
-    'name' => 'deploy',
-    'abstract' => 'deploy to a database',
-    'class' => 'Your::Command::deploy'
-  },
-  'Your::Command::test' => {
-    'usage_desc' => 'usage: %c test [options] <database>',
-    'opt_spec' => [
-      [
-        'help',
-        'print usage message and exit'
-      ]
-    ],
-    'arg_spec' => [
-      [
-        'database=s',
-        'production|development',
-        {
-          'required' => 1,
-          'default' => 'development'
-        }
-      ]
-    ],
-    'order' => 2147483647,
-    'name' => 'test',
-    'abstract' => 'test a database',
-    'class' => 'Your::Command::test'
-  },
-  'Your::Command::undeploy' => {
-    'usage_desc' => 'usage: %c undeploy [options] <database>',
-    'opt_spec' => [
-      [
-        'help',
-        'print usage message and exit'
-      ]
-    ],
-    'arg_spec' => [
-      [
-        'database=s',
-        'production|development',
-        {
-          'required' => 1,
-          'default' => 'development'
-        }
-      ]
-    ],
-    'order' => 2147483647,
-    'name' => 'undeploy',
-    'abstract' => 'undeploy a database',
-    'class' => 'Your::Command::undeploy'
-  }
+    'Your::Command' => {
+        'usage_desc' => 'usage: %c [options] <command>',
+        'opt_spec'   => [
+            [ 'help',      'print usage message and exit' ],
+            [ 'dry-run|n', 'print out SQL instead of running it' ]
+        ],
+        'arg_spec' => [ [ 'command=s', 'what to do', { 'required' => 1 } ] ],
+        'order'    => 2147483647,
+        'name'     => 'Command',
+        'abstract' => '(unknown)',
+        'class'    => 'Your::Command'
+    },
+    'Your::Command::deploy' => {
+        'usage_desc' => 'usage: %c deploy [options] <database>',
+        'opt_spec'   => [ [ 'help', 'print usage message and exit' ] ],
+        'arg_spec'   => [
+            [
+                'database=s',
+                'production|development',
+                {
+                    'required' => 1,
+                    'default'  => 'development'
+                }
+            ]
+        ],
+        'order'    => 2147483647,
+        'name'     => 'deploy',
+        'abstract' => 'deploy to a database',
+        'class'    => 'Your::Command::deploy'
+    },
+    'Your::Command::test' => {
+        'usage_desc' => 'usage: %c test [options] <database>',
+        'opt_spec'   => [ [ 'help', 'print usage message and exit' ] ],
+        'arg_spec'   => [
+            [
+                'database=s',
+                'production|development',
+                {
+                    'required' => 1,
+                    'default'  => 'development'
+                }
+            ]
+        ],
+        'order'    => 2147483647,
+        'name'     => 'test',
+        'abstract' => 'test a database',
+        'class'    => 'Your::Command::test'
+    },
+    'Your::Command::undeploy' => {
+        'usage_desc' => 'usage: %c undeploy [options] <database>',
+        'opt_spec'   => [ [ 'help', 'print usage message and exit' ] ],
+        'arg_spec'   => [
+            [
+                'database=s',
+                'production|development',
+                {
+                    'required' => 1,
+                    'default'  => 'development'
+                }
+            ]
+        ],
+        'order'    => 2147483647,
+        'name'     => 'undeploy',
+        'abstract' => 'undeploy a database',
+        'class'    => 'Your::Command::undeploy'
+    }
 };
-
-
 
 sub _commands {
     my $cmd = shift;
     require List::Util;
 
-    my $max = 4 + List::Util::max(map { length $_->{name} } values %$program);
-    my @commands = map {
-        sprintf("    %-${max}s %s\n", $_->{name}, $_->{abstract})
-    } sort {
-        $a->{order} <=> $b->{order}
-    } grep {
-        $_->{class} =~ m/${cmd}::/ and not
-        $_->{class} =~ m/${cmd}::.*:/
-    } values %$program;
+    my $max = 4 + List::Util::max( map { length $_->{name} } values %$program );
+    my @commands =
+      map { sprintf( "    %-${max}s %s\n", $_->{name}, $_->{abstract} ) }
+      sort { $a->{order} <=> $b->{order} }
+      grep { $_->{class} =~ m/${cmd}::/ and not $_->{class} =~ m/${cmd}::.*:/ }
+      values %$program;
     return @commands;
 }
-
 
 sub run {
 
     my $cmd = 'Your::Command';
 
     # Global options, possibly actual (main) command options
-    my ($gopt, $gusage) = describe_options(
+    my ( $gopt, $gusage ) = describe_options(
         $program->{$cmd}->{usage_desc},
-        @{ $program->{$cmd}->{opt_spec}},
-        { getopt_conf => [ 'require_order' ], },
+        @{ $program->{$cmd}->{opt_spec} },
+        { getopt_conf => ['require_order'], },
     );
 
     if ( $gopt->can('help') && $gopt->help ) {
         print STDOUT $gusage->text;
-        if ( my @commands = _commands( $cmd ) ) {
+        if ( my @commands = _commands($cmd) ) {
             print STDERR "\nCommands:\n";
-            print STDERR join('', @commands );
+            print STDERR join( '', @commands );
         }
         exit 1;
     }
 
-
     # Look for a subcommand
-    while ( @ARGV && exists $program->{$cmd .'::'. $ARGV[0]} ) {
-        $cmd = $cmd .'::'. shift @ARGV;
+    while ( @ARGV && exists $program->{ $cmd . '::' . $ARGV[0] } ) {
+        $cmd = $cmd . '::' . shift @ARGV;
     }
 
-    my ($opt, $usage) = ($gopt, $gusage);
+    my ( $opt, $usage ) = ( $gopt, $gusage );
     if ( $cmd ne 'Your::Command' ) {
-        ($opt, $usage) = describe_options(
+        ( $opt, $usage ) = describe_options(
             $program->{$cmd}->{usage_desc},
             @{ $program->{$cmd}->{opt_spec} },
-            { getopt_conf => [ 'require_order' ], },
+            { getopt_conf => ['require_order'], },
         );
     }
 
     if ( $opt->can('help') && $opt->help ) {
         print STDOUT $usage->text;
-        if ( my @commands = _commands( $cmd ) ) {
+        if ( my @commands = _commands($cmd) ) {
             print STDERR "\nCommands:\n";
-            print STDERR join('', @commands );
+            print STDERR join( '', @commands );
         }
         exit 1;
     }
@@ -178,82 +142,81 @@ sub run {
         print STDERR $usage->text;
         exit 2;
     }
+
     # Expecting an argument but don't have one?
     elsif ( @ARGV < @arg_spec ) {
-        if ( $arg_spec[0]->[2]->{required} ) {
+        if ( exists $arg_spec[0]->[2]->{required} ) {
             my $x = $arg_spec[0]->[0];
             $x =~ s/[\|=].*//;
-    #        print STDERR "Missing argument: <$x>\n\n";
+
+            #        print STDERR "Missing argument: <$x>\n\n";
             print STDERR $usage->text;
-            if ( my @commands = _commands( $cmd ) ) {
+            if ( my @commands = _commands($cmd) ) {
                 print STDERR "\nCommands:\n";
-                print STDERR join('', @commands );
+                print STDERR join( '', @commands );
             }
             exit 2;
         }
     }
 
-
     my @newargv;
-
 
     foreach my $opt_spec ( @{ $program->{$cmd}->{opt_spec} } ) {
         my $x = $opt_spec->[0];
         $x =~ s/[\|=].*//;
-        (my $x2 = $x) =~ s/-/_/;
+        ( my $x2 = $x ) =~ s/-/_/;
 
         if ( $opt_spec->[0] =~ /=/ ) {
             if ( $cmd eq 'Your::Command' ) {
-                push( @newargv, '--'.$x, $gopt->$x2 ) if ( exists
-                $gopt->{$x2} );
-            } else {
-                push( @newargv, '--'.$x, $opt->$x2 ) if ( exists
-                $opt->{$x2} );
+                push( @newargv, '--' . $x, $gopt->$x2 )
+                  if ( exists $gopt->{$x2} );
+            }
+            else {
+                push( @newargv, '--' . $x, $opt->$x2 )
+                  if ( exists $opt->{$x2} );
             }
         }
         else {
             if ( $cmd eq 'Your::Command' ) {
-                push( @newargv, '--'.$x) if ( exists
-                $gopt->{$x2} );
-            } else {
-                push( @newargv, '--'.$x ) if ( exists
-                $opt->{$x2} );
+                push( @newargv, '--' . $x ) if ( exists $gopt->{$x2} );
+            }
+            else {
+                push( @newargv, '--' . $x ) if ( exists $opt->{$x2} );
             }
         }
     }
 
-    foreach my $arg ( @arg_spec ) {
-        my $val = shift @ARGV;
-        my $x = $arg->[0];
+    foreach my $val (@ARGV) {
+        my $arg = shift @arg_spec;
+        my $x   = $arg->[0];
         $x =~ s/[|=].*//;
-        push( @newargv, '--'.$x, $val );
+        push( @newargv, '--' . $x, $val );
     }
 
     @ARGV = @newargv;
 
-    ($opt, $usage) = describe_options(
+    ( $opt, $usage ) = describe_options(
         $program->{$cmd}->{usage_desc},
         @{ $program->{$cmd}->{opt_spec} },
         @{ $program->{$cmd}->{arg_spec} }
     );
 
     require Module::Load;
-    Module::Load::load( $cmd );
+    Module::Load::load($cmd);
 
-    if ( @ARGV ) {
-        my $subcmd = 'run_'. $ARGV[0];
-        if ( $cmd->can( $subcmd ) ) {
-            shift @ARGV; 
+    if (@ARGV) {
+        my $subcmd = 'run_' . $ARGV[0];
+        if ( $cmd->can($subcmd) ) {
+            shift @ARGV;
             return $cmd->$subcmd( $opt, \@ARGV );
         }
     }
 
-    if ( ! $cmd->can('run') ) {
-        die "$cmd missing run() method\n";
+    if ( !$cmd->can('run') ) {
+        die "$cmd missing run() method or 'required' attribute on arg 1\n";
     }
     return $cmd->run( $opt, $gopt );
 }
-
 
 1;
 __END__
@@ -271,7 +234,8 @@ Your::Command::Dispatch - Dispatcher for Your::Command commands
 =head1 DESCRIPTION
 
 B<Your::Command::Dispatch> provides option checking, argument checking,
-and command dispatching for commands implemented under the Your::Command::* namespace.
+and command dispatching for commands implemented under the
+Your::Command::* namespace.
 
 This class has a single method:
 
@@ -297,9 +261,11 @@ Mark Lawrence E<lt>nomad@null.netE<gt>
 
 Copyright 2011 Mark Lawrence E<lt>nomad@null.netE<gt>
 
-This program is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 3 of the License, or
-(at your option) any later version.
+This program is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 3 of the License, or (at your
+option) any later version.
 
 =cut
+
+# vim: set tabstop=4 expandtab:

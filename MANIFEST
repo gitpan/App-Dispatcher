@@ -21,6 +21,12 @@ MANIFEST			This list of files
 META.yml
 share/Dispatcher.pm.tt
 t/App-Dispatcher.t
+t/bin/ex
+t/lib/Your/Command.pm
+t/lib/Your/Command/test.pm
+t/lib/Your/Command/undeploy.pm
+t/lib/Your/Command/deploy.pm
+t/lib/Your/Command/Dispatcher.pm
 xt/pod-coverage.t
 xt/package-names.t
 xt/pod.t

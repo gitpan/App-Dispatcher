@@ -5,10 +5,14 @@ author:
 build_requires:
   ExtUtils::MakeMaker: 6.42
   Test::More: 0
+  Test::Script::Run: 0.05
 configure_requires:
   ExtUtils::MakeMaker: 6.42
   File::ShareDir: 0
+  File::Slurp: 0
   Getopt::Long::Descriptive: 0
+  Perl::Tidy: 0
+  Pod::Tidy: 0
   Sub::Exporter: 0
   Template: 0
 distribution_type: module
@@ -27,9 +31,13 @@ no_index:
     - xt
 requires:
   File::ShareDir: 0
+  File::Slurp: 0
   Getopt::Long::Descriptive: 0
+  Perl::Tidy: 0
+  Pod::Tidy: 0
   Sub::Exporter: 0
   Template: 0
 resources:
   license: http://opensource.org/licenses/gpl-license.php
-version: 0.07
+  repository: git://github.com/mlawren/app-dispatcher.git
+version: 0.08

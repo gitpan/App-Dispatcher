@@ -1,18 +1,22 @@
 package Your::Command::test;
 
-sub arg_spec {(
-    [ "database=s",   "production|development",
-        { default => 'development', required => 1 } 
-    ],
-)};
+sub arg_spec {
+    (
+        [
+            "database=s",
+            "production|development",
+            { default => 'development', required => 1 }
+        ],
+    );
+}
 
 sub run {
-    my ($self,$opt,$gopt) = @_;
+    my ( $self, $opt, $gopt ) = @_;
 
     if ( $gopt->dry_run ) {
         print "Not ";
-    } 
-    print "Testing with ". $opt->database ."\n";
+    }
+    print "Testing with " . $opt->database . "\n";
 }
 
 1;

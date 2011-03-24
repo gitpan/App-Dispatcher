@@ -1,4 +1,5 @@
 __END__
+
 =pod
 
 =head1 NAME
@@ -11,8 +12,8 @@ L<App::Dispatcher> is a tool for constructing command line applications
 written in Perl.  It is specifically designed to handle applications
 with multiple sub-commands and will generate code to display usage
 text, validate options and arguments, and dispatch commands. Its main
-strength is that the usage and validation does not load any 
-command classes with their possibly heavy startup dependencies.
+strength is that the usage and validation does not load any  command
+classes with their possibly heavy startup dependencies.
 
 An application built with App::Dispatcher is composed of three parts:
 
@@ -35,9 +36,9 @@ The only runtime dependency that the Dispatcher Class needs to run is
 L<Getopt::Long::Descriptive>(3p), which the application author should
 add to their Makefile.PL and/or Build.PL scripts.
 
-Note that L<App::Dispatcher> is a code generation tool. This means
-that option and argument processing will not change when command
-classes are modified, until L<app-dispatcher> is re-run.
+Note that L<App::Dispatcher> is a code generation tool. This means that
+option and argument processing will not change when command classes are
+modified, until L<app-dispatcher> is re-run.
 
 =item Application Script
 
@@ -103,7 +104,7 @@ the opt_spec() and arg_spec() methods. The values returned from these
 methods are passed more or less untouched to
 L<Getopt::Long::Descriptive>'s describe_options() routine.
 
-Obvious should be the fact that the '-add-help' option to
+Obvious should be the fact that the '--add-help' option to
 L<app-dispatcher> has added a '--help' option to our command.
 
 What is more interesting is that arguments specification has the same
@@ -125,20 +126,23 @@ arg_spec definition:
         -D --drop-tables   DROP TABLEs before deploying
 
 You can see that the that the argument is now mandatory, and the usage
-message no longer has the '[]' brackets. If the automatically generated
-usage message is not to your liking, you can write a usage_desc()
-method to specify your own, but that is not really recommended as
-you'll have to keep it up to date manually when your code changes:
+message no longer uses the '[]' brackets around '<database>'. If the
+automatically generated usage message is not to your liking, you can
+write a usage_desc() method to specify your own, but that is not really
+recommended as you'll have to keep it up to date manually when your
+code changes:
 
     sub usage_desc {
         return '%c %o <DATABASE>'
     }
 
 Now imagine that the application should have more functions, for
-example 'test', and 'undeploy', and that they should be
-run as sub-commands. We will rewrite 'Your::Command' as follows:
+example 'test', and 'undeploy', and that they should be run as
+sub-commands. We will rewrite 'Your::Command' as follows:
 
     package Your::Command;
+
+    sub require_order { 1 }
     
     sub opt_spec {(
         [ "dry-run|n",     "print out SQL instead of running it" ],
@@ -156,6 +160,11 @@ argument, our usage message is still displayed when we run our command
 with no arguments.  If we wanted an action to take place when no
 arguments are given, we would make the Your::Command <command> argument
 optional, and reinstate the run() method in that package.
+
+The 'require_order' subroutine is new. By writing this routine to
+return a true value, we force Your::Command to only look at options
+which are defined for this package, and leave the rest to be handled by
+other command classes.
 
 Now we write a new command class 'Your::Command::deploy' as follows (
 'test' and 'undeploy' are similarly written):
@@ -267,10 +276,10 @@ Mark Lawrence E<lt>nomad@null.netE<gt>.
 
 Copyright (C) 2011 Mark Lawrence <nomad@null.net>
 
-This program is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 3 of the License, or
-(at your option) any later version.
+This program is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 3 of the License, or (at your
+option) any later version.
 
 =cut
 
