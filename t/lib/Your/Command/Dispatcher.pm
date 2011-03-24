@@ -5,7 +5,7 @@ use Getopt::Long::Descriptive qw/describe_options prog_name/;
 use strict;
 use warnings;
 
-our $VERSION = '0.08';
+our $VERSION = '0.09';
 
 my $me = prog_name;
 

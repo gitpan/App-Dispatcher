@@ -40,4 +40,4 @@ requires:
 resources:
   license: http://opensource.org/licenses/gpl-license.php
   repository: git://github.com/mlawren/app-dispatcher.git
-version: 0.08
+version: 0.09
