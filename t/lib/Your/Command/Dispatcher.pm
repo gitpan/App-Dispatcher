@@ -5,20 +5,20 @@ use Getopt::Long::Descriptive qw/describe_options prog_name/;
 use strict;
 use warnings;
 
-our $VERSION = '0.10';
+our $VERSION = '0.11';
 
 my $me = prog_name;
 
 my $program = {
     'Your::Command' => {
         'opt_spec' => [
-            [ 'help|h',           'print usage message and exit' ],
+            [ 'help',             'print usage message and exit' ],
             [ 'debug-dispatcher', 'print App::Dispatcher debug information' ],
             [ 'dry-run|n',        'print out SQL instead of running it' ]
         ],
         'arg_spec' => [ [ 'command=s', 'what to do', { 'required' => 1 } ] ],
         'name'          => 'Command',
-        'usage_desc'    => 'usage: %c [options] <command> [...]',
+        'usage_desc'    => 'usage: %c [options] COMMAND [...]',
         'order'         => 2147483647,
         'class'         => 'Your::Command',
         'abstract'      => '(unknown)',
@@ -26,7 +26,12 @@ my $program = {
         'getopt_conf'   => [ 'require_order' ]
     },
     'Your::Command::deploy' => {
-        'opt_spec' => [ [ 'help|h', 'print usage message and exit' ] ],
+        'opt_spec' => [
+            [ 'help',             'print usage message and exit' ],
+            [ 'debug-dispatcher', 'print App::Dispatcher debug information' ],
+            [ 'dry-run|n',        'print out SQL instead of running it' ],
+            [ 'full',             'run a full deployment' ]
+        ],
         'arg_spec' => [
             [
                 'database=s',
@@ -38,7 +43,7 @@ my $program = {
             ]
         ],
         'name'          => 'deploy',
-        'usage_desc'    => 'usage: %c deploy [options] <database>',
+        'usage_desc'    => 'usage: %c deploy [options] DATABASE',
         'order'         => 1,
         'class'         => 'Your::Command::deploy',
         'abstract'      => 'deploy to a database',
@@ -46,7 +51,11 @@ my $program = {
         'getopt_conf'   => [ 'permute' ]
     },
     'Your::Command::test' => {
-        'opt_spec' => [ [ 'help|h', 'print usage message and exit' ] ],
+        'opt_spec' => [
+            [ 'help',             'print usage message and exit' ],
+            [ 'debug-dispatcher', 'print App::Dispatcher debug information' ],
+            [ 'dry-run|n',        'print out SQL instead of running it' ]
+        ],
         'arg_spec' => [
             [
                 'database=s',
@@ -58,7 +67,7 @@ my $program = {
             ]
         ],
         'name'          => 'test',
-        'usage_desc'    => 'usage: %c test [options] <database>',
+        'usage_desc'    => 'usage: %c test [options] DATABASE',
         'order'         => 2,
         'class'         => 'Your::Command::test',
         'abstract'      => 'test a database',
@@ -66,7 +75,11 @@ my $program = {
         'getopt_conf'   => [ 'permute' ]
     },
     'Your::Command::undeploy' => {
-        'opt_spec' => [ [ 'help|h', 'print usage message and exit' ] ],
+        'opt_spec' => [
+            [ 'help',             'print usage message and exit' ],
+            [ 'debug-dispatcher', 'print App::Dispatcher debug information' ],
+            [ 'dry-run|n',        'print out SQL instead of running it' ]
+        ],
         'arg_spec' => [
             [
                 'database=s',
@@ -78,7 +91,7 @@ my $program = {
             ]
         ],
         'name'          => 'undeploy',
-        'usage_desc'    => 'usage: %c undeploy [options] <database>',
+        'usage_desc'    => 'usage: %c undeploy [options] DATABASE',
         'order'         => 3,
         'class'         => 'Your::Command::undeploy',
         'abstract'      => 'undeploy a database',
@@ -105,9 +118,10 @@ sub _commands {
 }
 
 sub _message {
-    my ( $cmd, $usage, $FD ) = @_;
+    my ( $cmd, $usage, $abstract ) = @_;
 
-    print $FD $usage->text;
+    my $str = $usage->text;
+    $str .= "\n($program->{$cmd}->{abstract})\n" if $abstract;
 
     my @arg_spec = @{ $program->{$cmd}->{arg_spec} };
     return unless @arg_spec;
@@ -118,94 +132,56 @@ sub _message {
         my $x = $arg_spec[0]->[0];
         $x =~ s/[\|=].*//;
 
-        print $FD "\nValid values for <$x> include:\n";
-        print $FD join( '', @commands );
+        $str .= "\nValid values for " . ( uc $x ) . " include:\n";
+        $str .= join( '', @commands );
     }
+    return $str;
 }
 
 sub _usage {
-    _message( @_, *STDERR );
-    exit 2;
+    die _message(@_);
 }
 
 sub _help {
-    _message( @_, *STDOUT );
-    exit 1;
+    print STDOUT _message( @_, 1 );
 }
 
-sub _mtime_check {
-    my $cmd = shift;
-    require Module::Load;
-    Module::Load::load($cmd);
+my $DEBUG = 0;
+my %RAN   = ();
 
-    ( my $plugin_file = $cmd . '.pm' ) =~ s!::!/!g;
-
-    my $file = $INC{$plugin_file};
-
-    if ( -M $file < -M __FILE__ ) {
-        warn "warning: "
-          . __PACKAGE__
-          . " is out of date:\n    "
-          . scalar localtime( ( stat(__FILE__) )[9] ) . " "
-          . __FILE__
-          . "\n    "
-          . scalar localtime( ( stat($file) )[9] )
-          . " $file\n";
-    }
-}
-
-sub run {
+sub _dispatch {
     my $class = shift;
-
-    my $cmd = 'Your::Command';
-
-    _mtime_check($cmd);
-
-    my @ORIG_ARGV = @ARGV;
-
-    # Global options, possibly actual (main) command options
-    my ( $gopt, $gusage ) = describe_options(
-        $program->{$cmd}->{usage_desc},
-        @{ $program->{$cmd}->{opt_spec} },
-        { getopt_conf => $program->{$cmd}->{getopt_conf} },
-    );
-
-    my $debug = $gopt->debug_dispatcher;
-    if ($debug) {
-        print __PACKAGE__. ": $cmd @ORIG_ARGV\n";
-        print __PACKAGE__. ":   gopt:\n";
-        map { print __PACKAGE__ . ":     " . $_ . ' => ' . $gopt->$_ . "\n" }
-          keys %$gopt;
+    if (@_) {
+        @ARGV = @_;
     }
 
-    _help( $cmd, $gusage ) if ( $gopt->can('help') && $gopt->help );
+    my $cmd       = 'Your::Command';
+    my @ORIG_ARGV = @ARGV;
 
     # Look for a subcommand
     while ( @ARGV && exists $program->{ $cmd . '::' . $ARGV[0] } ) {
         $cmd = $cmd . '::' . shift @ARGV;
     }
 
+    my ( $opt, $usage ) = describe_options(
+        $program->{$cmd}->{usage_desc},
+        @{ $program->{$cmd}->{opt_spec} },
+        { getopt_conf => $program->{$cmd}->{getopt_conf} },
+    );
+
+    my $debug = $opt->debug_dispatcher || $DEBUG;
     print __PACKAGE__. ": $cmd @ARGV\n" if $debug;
 
-    _mtime_check($cmd);
-
-    my ( $opt, $usage ) = ( $gopt, $gusage );
-    if ( $cmd ne 'Your::Command' ) {
-        ( $opt, $usage ) = describe_options(
-            $program->{$cmd}->{usage_desc},
-            @{ $program->{$cmd}->{opt_spec} },
-            { getopt_conf => $program->{$cmd}->{getopt_conf} },
-        );
-    }
-
-    if ( $debug and $cmd ne 'Your::Command' ) {
+    if ($debug) {
         print __PACKAGE__. ":   opt:\n";
         map { print __PACKAGE__ . ":     " . $_ . ' => ' . $opt->$_ . "\n" }
           keys %$opt;
         print __PACKAGE__. ": $cmd @ARGV\n";
     }
 
-    _help( $cmd, $usage ) if ( $opt->can('help') && $opt->help );
+    if ( $opt->can('help') && $opt->help ) {
+        return _help( $cmd, $usage );
+    }
 
     my @arg_spec = @{ $program->{$cmd}->{arg_spec} };
 
@@ -224,6 +200,7 @@ sub run {
         next unless ( exists $arg->[2]->{required} );
 
         _usage( $cmd, $usage );
+        return;
     }
 
     # Now rebuild the whole command line that includes options and
@@ -232,7 +209,8 @@ sub run {
     my @remainder;
 
     my $i = 0;
-    while ( my $val = shift @ARGV ) {
+    while (@ARGV) {
+        my $val = shift @ARGV;
         if ( !@arg_spec ) {
             @remainder = ( $val, @ARGV );
             last;
@@ -268,18 +246,54 @@ sub run {
         print __PACKAGE__. ":   opt:\n";
         map { print __PACKAGE__ . ":     " . $_ . ' => ' . $opt->$_ . "\n" }
           keys %$opt;
-        print __PACKAGE__. ": $cmd\->run( \$opt, \$gopt ) @ARGV\n\n";
+        print __PACKAGE__. ": $cmd\->run( \$opt ) @ARGV\n\n";
     }
 
-    require Module::Load;
-    Module::Load::load($cmd);
+    if ( !$RAN{$cmd} ) {
 
-    # FIXME move this check into App::Dispatcher?
-    if ( !$cmd->can('run') ) {
-        _usage( $cmd, $usage );
-        die "$cmd missing run() method or 'required' attribute on arg 1\n";
+        eval "require $cmd";    ## no critic
+        die $@ if $@;
+
+        ( my $plugin_file = $cmd . '.pm' ) =~ s!::!/!g;
+        my $file = $INC{$plugin_file};
+
+        if ( -M $file < -M __FILE__ ) {
+            warn "warning: "
+              . __PACKAGE__
+              . " is out of date:\n    "
+              . scalar localtime( ( stat(__FILE__) )[9] ) . " "
+              . __FILE__
+              . "\n    "
+              . scalar localtime( ( stat($file) )[9] )
+              . " $file\n";
+        }
+
+        # FIXME move this check into App::Dispatcher?
+        if ( !$cmd->can('run') ) {
+            _usage( $cmd, $usage );
+            die "$cmd missing run() method or 'required' attribute on arg 1\n";
+        }
+
+        {
+            no strict 'refs';    ## no critic
+            *{ $cmd . '::opt' } = sub { $opt };
+            *{ $cmd . '::usage' } = sub { _message( $cmd, $usage ) };
+            *{ $cmd . '::dispatch' } = sub {
+                shift;
+                $DEBUG = 1 if $opt->can('debug_dispatcher');
+                $class->_dispatch(@_);
+            };
+        }
+        $RAN{$cmd}++;
     }
-    return $cmd->run( $opt, $gopt, $usage, $gusage );
+
+    return $cmd->run($opt);
+
+}
+
+sub run {
+    my $class = shift;
+    $class->_dispatch(@_);
 }
 
 1;
@@ -288,17 +302,17 @@ __END__
 
 =head1 NAME
 
-Your::Command::Dispatch - Dispatcher for Your::Command commands
+Your::Command::Dispatcher - Dispatcher for Your::Command commands
 
 =head1 SYNOPSIS
 
-  use Your::Command::Dispatch;
-  Your::Command::Dispatch->run;
+  use Your::Command::Dispatcher;
+  Your::Command::Dispatcher->run;
 
 =head1 DESCRIPTION
 
-B<Your::Command::Dispatch> provides option checking, argument checking,
-and command dispatching for commands implemented under the
+B<Your::Command::Dispatcher> provides option checking, argument
+checking, and command dispatching for commands implemented under the
 Your::Command::* namespace.
 
 This class has a single method:

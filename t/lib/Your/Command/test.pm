@@ -13,9 +13,9 @@ sub arg_spec {
 }
 
 sub run {
-    my ( $self, $opt, $gopt ) = @_;
+    my ( $self, $opt ) = @_;
 
-    if ( $gopt->dry_run ) {
+    if ( $opt->dry_run ) {
         print "Not ";
     }
     print "Testing with " . $opt->database . "\n";

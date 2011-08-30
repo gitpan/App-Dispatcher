@@ -1,0 +1,154 @@
+
+=head1 NAME
+
+App::Dispatcher - generate command-line dispatcher classes
+
+=head1 VERSION
+
+0.11. Development Release.
+
+=head1 SYNOPSIS
+
+    use App::Dispatcher qw/run_app_dispatcher/;
+    run_app_dispatcher( $class, $opt );
+
+=head1 DESCRIPTION
+
+B<App::Dispatcher> is the implementation for the L<app-dispatcher>(1)
+command. This interface is generally not used directly by application
+authors. Most likely you want to read L<App::Dispatcher::Tutorial> and
+the documentation for L<app-dispatcher>(1).
+
+This module exports a a single subroutine with that takes two mandatory
+arguments:
+
+=over 4
+
+=item run_app_dispatcher( $class, @opts )
+
+=over 4
+
+=item $class
+
+The name space under which the command classes will be searched for.
+
+=item @opts
+
+Command line arguments matching the following options:
+
+=over 4
+
+=item --add-help
+
+Add a global '--help' option.
+
+=item --add-short-help
+
+Include a '-h' option with '--help'.
+
+=item --add-debug
+
+Turns on debugging statements useful for seeing the actual options your
+command classes are receiving.
+
+=item --inc
+
+Arrayref to add to @INC.
+
+=item --path
+
+Arrayref of directories to search for command classes.
+
+=item --verbose
+
+Print out extra details during execution.
+
+=item --dry-run
+
+Don't write out any files to disk.
+
+=item --force
+
+Force the overwriting of existing writeable files.
+
+=back
+
+=back
+
+=back
+
+A successful run of app_dispatcher() results in the creation of 
+'lib/$class/Dispatcher.pm', which is based on the Command Classes found
+under 'lib/$class'.
+
+The command classes may have the following methods defined:
+
+=over 4
+
+=item require_order
+
+Optional. An boolean to set the L<Getopt::Long> option 'require_order'
+when true, or set option 'permute' (the default) when false (or not
+defined).
+
+=item order
+
+Optional. An integer to force the order in which commands are
+displayed.
+
+=item usage_desc
+
+Optional. The string used for error messgaes. Will be auto-generated
+from the opt_spec and arg_spec methods if not implemented.
+
+=item gopt_spec
+
+Optional. Global command options. Only recognized in the top-level
+class.  This list of array references returned by this method will be
+passed to the describe_options method of Getopt::Long::Descriptive.
+
+=item opt_spec
+
+Optional, but at least one of opt_spec or arg_spec should in most cases
+be present. Must return list of option definitions which will be passed
+to the describe_options method of Getopt::Long::Descriptive.
+
+=item arg_spec
+
+Optional, but at least one of opt_spec or arg_spec should in most cases
+be implemented. A list of argument definitions which will be passed to
+the describe_options method of Getopt::Long::Descriptive.
+
+=item run
+
+Optional, but it only makes sense to be left unimplemented if the
+command requires subcommands. This is the method where the real work is
+performed.
+
+=item abstract
+
+Optional. A brief description of the command. Will be pulled from the
+POD documentation if not implemented.
+
+=back
+
+B<App::Dispatcher> is also its own Command Class. That is, it
+implements the opt_spec(), arg_spec() and run() methods.
+
+=head1 SEE ALSO
+
+L<app-dispatcher>(1), L<App::Dispatcher::Tutorial>(3p)
+
+=head1 AUTHOR
+
+Mark Lawrence E<lt>nomad@null.netE<gt>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (C) 2011 Mark Lawrence <nomad@null.net>
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 3 of the License, or (at your
+option) any later version.
+

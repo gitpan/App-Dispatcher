@@ -41,9 +41,10 @@ sub _commands {
 }
 
 sub _message {
-    my ( $cmd, $usage, $FD ) = @_;
+    my ( $cmd, $usage, $abstract ) = @_;
 
-    print $FD $usage->text;
+    my $str = $usage->text;
+    $str .= "\n($program->{$cmd}->{abstract})\n" if $abstract;
 
     my @arg_spec = @{ $program->{ $cmd }->{arg_spec} };
     return unless @arg_spec;
@@ -54,94 +55,48 @@ sub _message {
         my $x = $arg_spec[0]->[0];
         $x =~ s/[\|=].*//;
 
-        print $FD "\nValid values for <$x> include:\n";
-        print $FD join('', @commands );
+        $str .= "\nValid values for ". (uc $x) ." include:\n";
+        $str .= join('', @commands );
     }
+    return $str;
 }
 
 sub _usage {
-    _message( @_, *STDERR );
-    exit 2;
+    die _message( @_ );
 }
 
 sub _help {
-    _message( @_, *STDOUT );
-    exit 1;
+    print STDOUT _message( @_, 1 );
 }
 
+my $DEBUG = 0;
+my %RAN = ();
 
-[% IF add_mtime_check %]
-sub _mtime_check {
-    my $cmd = shift;
-    require Module::Load;
-    Module::Load::load( $cmd );
-
-    (my $plugin_file = $cmd . '.pm') =~ s!::!/!g;
-
-    my $file = $INC{$plugin_file};
-
-    if ( -M $file < -M __FILE__ ) {
-        warn "warning: ". __PACKAGE__ ." is out of date:\n    " .
-            scalar localtime((stat(__FILE__))[9]) ." ".__FILE__."\n    " .
-            scalar localtime((stat($file))[9]) ." $file\n" ;
-    }
-}
-[% END %]
-
-
-sub run {
+sub _dispatch {
     my $class = shift;
+    if ( @_ ) {
+        @ARGV = @_;
+    }
 
     my $cmd = '[% class %]';
-[% IF add_mtime_check %]
-    _mtime_check( $cmd );
-[% END %]
-
     my @ORIG_ARGV = @ARGV;
-
-    # Global options, possibly actual (main) command options
-    my ($gopt, $gusage) = describe_options(
-        $program->{$cmd}->{usage_desc},
-        @{ $program->{$cmd}->{opt_spec}},
-        { getopt_conf => $program->{$cmd}->{getopt_conf} },
-    );
-
-[% IF add_debug %]
-    my $debug = $gopt->debug_dispatcher;
-    if ( $debug ) {
-        print __PACKAGE__.": $cmd @ORIG_ARGV\n";
-        print __PACKAGE__.":   gopt:\n";
-        map { print __PACKAGE__ .":     ". $_ .' => '. $gopt->$_ ."\n" }
-        keys %$gopt;
-    }
-[% END %]
-
-    _help( $cmd, $gusage ) if ( $gopt->can('help') && $gopt->help );
 
     # Look for a subcommand
     while ( @ARGV && exists $program->{$cmd .'::'. $ARGV[0]} ) {
         $cmd = $cmd .'::'. shift @ARGV;
     }
 
+    my ($opt, $usage) = describe_options(
+        $program->{$cmd}->{usage_desc},
+        @{ $program->{$cmd}->{opt_spec} },
+        { getopt_conf => $program->{$cmd}->{getopt_conf} },
+    );
+
 [% IF add_debug %]
+    my $debug = $opt->debug_dispatcher || $DEBUG;
     print __PACKAGE__.": $cmd @ARGV\n" if $debug;
-[% END %]
 
-[% IF add_mtime_check %]
-    _mtime_check( $cmd );
-[% END %]
-
-    my ($opt, $usage) = ($gopt, $gusage);
-    if ( $cmd ne '[% class %]' ) {
-        ($opt, $usage) = describe_options(
-            $program->{$cmd}->{usage_desc},
-            @{ $program->{$cmd}->{opt_spec} },
-            { getopt_conf => $program->{$cmd}->{getopt_conf} },
-        );
-    }
-
-[% IF add_debug %]
-    if ( $debug and $cmd ne '[% class %]' ) {
+    if ( $debug ) {
         print __PACKAGE__.":   opt:\n";
         map { print __PACKAGE__ .":     ". $_ .' => '. $opt->$_ ."\n"}
         keys %$opt;
@@ -149,7 +104,9 @@ sub run {
     }
 [% END %]
 
-    _help( $cmd, $usage ) if ( $opt->can('help') && $opt->help );
+    if ( $opt->can('help') && $opt->help ) {
+        return _help( $cmd, $usage );
+    };
 
     my @arg_spec = @{ $program->{$cmd}->{arg_spec} };
 
@@ -167,6 +124,7 @@ sub run {
         next unless ( exists $arg->[2]->{required} );
 
         _usage( $cmd, $usage );
+        return;
     }
 
     # Now rebuild the whole command line that includes options and
@@ -175,7 +133,8 @@ sub run {
     my @remainder;
 
     my $i = 0;
-    while ( my $val = shift @ARGV ) {
+    while ( @ARGV ) {
+        my $val = shift @ARGV;
         if ( !@arg_spec ) {
             @remainder = ( $val, @ARGV );
             last;
@@ -214,21 +173,51 @@ sub run {
         print __PACKAGE__.":   opt:\n";
         map { print __PACKAGE__ .":     ". $_ .' => '. $opt->$_ . "\n"}
         keys %$opt;
-        print __PACKAGE__.": $cmd\->run( \$opt, \$gopt ) @ARGV\n\n";
+        print __PACKAGE__.": $cmd\->run( \$opt ) @ARGV\n\n";
     }
 [% END %]
 
-    require Module::Load;
-    Module::Load::load( $cmd );
+    if ( !$RAN{$cmd} ) {
 
-    # FIXME move this check into App::Dispatcher?
-    if ( ! $cmd->can('run') ) {
-        _usage( $cmd, $usage );
-        die "$cmd missing run() method or 'required' attribute on arg 1\n";
+        eval "require $cmd"; ## no critic
+        die $@ if $@;
+
+        (my $plugin_file = $cmd . '.pm') =~ s!::!/!g;
+        my $file = $INC{$plugin_file};
+
+        if ( -M $file < -M __FILE__ ) {
+            warn "warning: ". __PACKAGE__ ." is out of date:\n    " .
+                scalar localtime((stat(__FILE__))[9]) ." ".__FILE__."\n    " .
+                scalar localtime((stat($file))[9]) ." $file\n" ;
+        }
+
+        # FIXME move this check into App::Dispatcher?
+        if ( ! $cmd->can('run') ) {
+            _usage( $cmd, $usage );
+            die "$cmd missing run() method or 'required' attribute on arg 1\n";
+        }
+
+        {
+            no strict 'refs'; ## no critic
+            *{ $cmd . '::opt' } = sub { $opt };
+            *{ $cmd . '::usage' } = sub { _message( $cmd, $usage ) };
+            *{ $cmd . '::dispatch' } = sub {
+                shift;
+                $DEBUG = 1 if $opt->can('debug_dispatcher');
+                $class->_dispatch( @_ );
+            };
+        }
+        $RAN{$cmd}++;
     }
-    return $cmd->run( $opt, $gopt, $usage, $gusage );
+
+    return $cmd->run($opt);
+
 }
 
+sub run {
+    my $class = shift;
+    $class->_dispatch(@_);
+}
 
 1;
 __END__
@@ -236,16 +225,16 @@ __END__
 
 =head1 NAME
 
-[% class %]::Dispatch - Dispatcher for [% class %] commands
+[% class %]::Dispatcher - Dispatcher for [% class %] commands
 
 =head1 SYNOPSIS
 
-  use [% class %]::Dispatch;
-  [% class %]::Dispatch->run;
+  use [% class %]::Dispatcher;
+  [% class %]::Dispatcher->run;
 
 =head1 DESCRIPTION
 
-B<[% class %]::Dispatch> provides option checking, argument checking,
+B<[% class %]::Dispatcher> provides option checking, argument checking,
 and command dispatching for commands implemented under the [% class
 %]::* namespace.
 

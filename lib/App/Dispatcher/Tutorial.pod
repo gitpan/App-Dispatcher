@@ -6,6 +6,10 @@ __END__
 
 App::Dispatcher::Tutorial - build fast command-line applications
 
+=head1 VERSION
+
+0.11. Development Release.
+
 =head1 INTRODUCTION
 
 L<App::Dispatcher> is a tool for constructing command line applications
@@ -53,7 +57,44 @@ All the examples below assume the existence of this application script.
 
 =back
 
+=head1 COMMAND-LINE COMPONENTS
+
+How exactly does one define a command line application?
+B<App::Dispatcher> assumes a fairly common (but by no means universal)
+approach:
+
+=over 4
+
+=item command
+
+The program name - i.e. the filename be executed by the shell.
+
+=item options
+
+Options affect the way a command runs. They are generally not required
+to be present, but that is configurable.
+
+=item arguments
+
+Arguments are positional parameters that a command needs know in order
+to do its work.
+
+=back
+
+A command can also have sub-commands. Each sub command can have its own
+options and arguments.  From the users point of view sub-commands and
+their options are indisinguishable from options and arguments to the
+main command, but from an implementation perspective they are separate,
+stand-alone programs, with possibly their own set of sub-commands.
+
+One additional element that B<App::Dispatcher> knows about are Global
+Options - options which are defined once and used by every sub-command
+the same way.
+
 The rest of this tutorial is all about how to write Command Classes.
+
+=head1 SIMPLE COMMANDS
+
 Let's start with a simple command that has two options, one optional
 argument, and no sub-commands:
 
@@ -136,7 +177,9 @@ code changes:
         return '%c %o <DATABASE>'
     }
 
-Now imagine that the application should have more functions, for
+=head1 SUB-COMMANDS
+
+Imagine that the application should now have more functions, for
 example 'test', and 'undeploy', and that they should be run as
 sub-commands. We will rewrite 'Your::Command' as follows:
 
@@ -144,7 +187,7 @@ sub-commands. We will rewrite 'Your::Command' as follows:
 
     sub require_order { 1 }
     
-    sub opt_spec {(
+    sub gopt_spec {(
         [ "dry-run|n",     "print out SQL instead of running it" ],
     )};
     
@@ -154,17 +197,15 @@ sub-commands. We will rewrite 'Your::Command' as follows:
 
 
 What we now have is a global option 'dry-run', that applies to all
-commands, accessed through the third argument to the run() method (see
-below). Because the 'Your::Command' arg_spec defines a mandatory
+commands. Because the 'Your::Command' arg_spec defines a mandatory
 argument, our usage message is still displayed when we run our command
 with no arguments.  If we wanted an action to take place when no
 arguments are given, we would make the Your::Command <command> argument
 optional, and reinstate the run() method in that package.
 
 The 'require_order' subroutine is new. By writing this routine to
-return a true value, we force Your::Command to only look at options
-which are defined for this package, and leave the rest to be handled by
-other command classes.
+return a true value, we force Getopt::Long to look for options before
+arguments.
 
 Now we write a new command class 'Your::Command::deploy' as follows (
 'test' and 'undeploy' are similarly written):
@@ -178,9 +219,9 @@ Now we write a new command class 'Your::Command::deploy' as follows (
     )};
     
     sub run {
-        my ($self,$opt,$gopt) = @_;
+        my ($self,$opt) = @_;
     
-        if ( $gopt->dry_run ) {
+        if ( $opt->dry_run ) {
             print "Not ";
         } 
         print "Deploying to ". $opt->database ."\n";
@@ -260,6 +301,45 @@ And now we have:
         deploy       deploy to a database
         test         test a database
         undeploy     undeploy a database
+
+=head1 ADVANCED
+
+When your dispatcher runs it also adds a couple of extra methods to
+your command classes, which let you do advanced things such as
+re-dispatching to another command or printing the usage based on some
+run-time (not dispatch-time) condition:
+
+    use Database::Lookup;
+
+    sub run {
+        my ($self,$opt) = @_;
+
+        if ( database_lookup($self->opt->id) ) {
+            return $self->dispatch(
+                'other','sub_command','--other', '--options');
+        }
+        else {
+            die "Unknown ID\n" . $self->usage();
+        }
+    }
+
+The extra methods are:
+
+=over 4
+
+=item opt()
+
+Same as the first argument to your run() method.
+
+=item usage()
+
+The L<Getopt::Long::Descriptive> usage object.
+
+=item dispatch()
+
+Runs the command dispatcher again but with different arguments.
+
+=back
 
 =head1 ALTERNATIVES
 

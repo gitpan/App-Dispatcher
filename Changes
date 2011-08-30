@@ -1,3 +1,25 @@
+0.11 (2011-08-31)
+
+    API Changes:
+        - Removal of '--add-mtime' option.
+        - Internal Change (not visible to normal applications):
+          app_dispatcher() and app_dispatcher_opts() replaced by a
+          single run_app_dispatcher() function.
+
+    New Features:
+        - Advanced methods: opt(), usage() and dispatch().
+
+    Enhancements:
+        - Obtain command abstracts from separate .pod files too.
+        - Clearer documentation about makeup of command line apps.
+        - Usage message prints arguments UPPERCASED.
+
+    Bug Fixes:
+        - None.
+
+    Other:
+        - None.
+
 0.09, 0.10 (Released 2011-03-24)
 
     API Changes:

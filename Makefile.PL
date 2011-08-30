@@ -1,30 +1,32 @@
 # Load the Module::Install bundled in ./inc/
 use inc::Module::Install;
 
-# Let's eat our own dogfood by bootstrapping and building
-# app-dispatcher on the fly
+# Eat our own dogfood by bootstrapping and building app-dispatcher on
+# the fly
 use lib 'lib';
-use App::Dispatcher qw/app_dispatcher app_dispatcher_opts/;
-use Getopt::Long::Descriptive qw/describe_options/;
+use App::Dispatcher qw/run_app_dispatcher/;
+run_app_dispatcher(qw/App::Dispatcher --add-help/);
 
-my $opt = app_dispatcher_opts(qw/ --add-help --class App::Dispatcher /);
-
-app_dispatcher( $opt->class, $opt );
+# Now normal Makefile.PL stuff
 
 name 'App-Dispatcher';
 license 'GPL';
 all_from 'lib/App/Dispatcher.pm';
 
+requires 'Storable'                  => 0;
 requires 'Template'                  => 0;
 requires 'File::ShareDir'            => 0;
+requires 'File::Basename'            => 0;
 requires 'Sub::Exporter'             => 0;
 requires 'Getopt::Long::Descriptive' => 0;
 requires 'Perl::Tidy'                => 0;
 requires 'Pod::Tidy'                 => 0;
 requires 'File::Slurp'               => 0;
 
+configure_requires 'Storable'                  => 0;
 configure_requires 'Template'                  => 0;
 configure_requires 'File::ShareDir'            => 0;
+configure_requires 'File::Basename'            => 0;
 configure_requires 'Sub::Exporter'             => 0;
 configure_requires 'Getopt::Long::Descriptive' => 0;
 configure_requires 'Perl::Tidy'                => 0;

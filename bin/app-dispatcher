@@ -12,6 +12,10 @@ __END__
 
 app-dispatcher - build command line applications in Perl
 
+=head1 VERSION
+
+0.11. Development Release.
+
 =head1 SYNOPSIS
 
   app-dispatcher [options] Your::Class
@@ -40,6 +44,25 @@ Note that B<app-dispatcher> is a code generation tool. This means your
 command's argument and option processing will not change when you
 modify your command classes, until you re-run B<app-dispatcher>.
 
+The command classes should implement at least some of the following
+subroutines:
+
+=over 4
+
+=item gopt_spec()
+
+=item opt_spec()
+
+=item arg_spec()
+
+=item order()
+
+=item require_order()
+
+=item run()
+
+=back
+
 See L<App::Dispatcher::Tutorial>(3p) for details of how your command
 classes should be written.
 
@@ -51,17 +74,21 @@ classes should be written.
 
 Print usage message and exit.
 
-=item --add-help, -H
+=item --add-help
 
-Add a '--help' option to every command.
+Add a global '--help' option.
 
-=item --add-debug, -D
+=item --add-short-help
+
+Add a '-h' alias for the global '--help' option.
+
+=item --add-debug
 
 Add a global '--debug-dispatcher' option. Useful for debugging the
 actual options your command classes are receiving. Automatically
 enables '--add-mtime-check'.
 
-=item --add-mtime-check, -M
+=item --add-mtime-check
 
 Warn at dispatch time if the command class file has a more recent
 modification date than the dispatch class.
